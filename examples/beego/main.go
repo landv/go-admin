@@ -1,16 +1,17 @@
 package main
 
 import (
+	_ "github.com/GoAdminGroup/go-admin/adapter/beego"
+	"github.com/GoAdminGroup/go-admin/engine"
+	"github.com/GoAdminGroup/go-admin/examples/datamodel"
+	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/modules/language"
+	"github.com/GoAdminGroup/go-admin/plugins/admin"
+	"github.com/GoAdminGroup/go-admin/plugins/example"
+	"github.com/GoAdminGroup/go-admin/template/types"
+	_ "github.com/GoAdminGroup/themes/adminlte"
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/context"
-	_ "github.com/chenhg5/go-admin/adapter/beego"
-	"github.com/chenhg5/go-admin/engine"
-	"github.com/chenhg5/go-admin/examples/datamodel"
-	"github.com/chenhg5/go-admin/modules/config"
-	"github.com/chenhg5/go-admin/modules/db"
-	"github.com/chenhg5/go-admin/plugins/admin"
-	"github.com/chenhg5/go-admin/plugins/example"
-	"github.com/chenhg5/go-admin/template/types"
 )
 
 func main() {
@@ -19,37 +20,58 @@ func main() {
 	eng := engine.Default()
 
 	cfg := config.Config{
-		DATABASE: []config.Database{
-			{
-				HOST:         "127.0.0.1",
-				PORT:         "3306",
-				USER:         "root",
-				PWD:          "root",
-				NAME:         "godmin",
-				MAX_IDLE_CON: 50,
-				MAX_OPEN_CON: 150,
-				DRIVER:       db.DriverMysql,
+		Databases: config.DatabaseList{
+			"default": {
+				Host:       "127.0.0.1",
+				Port:       "3306",
+				User:       "root",
+				Pwd:        "root",
+				Name:       "godmin",
+				MaxIdleCon: 50,
+				MaxOpenCon: 150,
+				Driver:     config.DriverMysql,
 			},
 		},
-		DOMAIN: "localhost",
-		PREFIX: "admin",
-		INDEX:  "/",
-		DEBUG:  true,
+		UrlPrefix: "admin",
+		IndexUrl:  "/",
+		Debug:     true,
+		Language:  language.CN,
 	}
 
-	// you can custom a plugin like:
+	adminPlugin := admin.NewAdmin(datamodel.Generators)
+
+	// add generator, first parameter is the url prefix of table when visit.
+	// example:
+	//
+	// "user" => http://localhost:9087/admin/info/user
+	//
+	adminPlugin.AddGenerator("user", datamodel.GetUserTable)
+
+	// customize a plugin
 
 	examplePlugin := example.NewExample()
 
-	if err := eng.AddConfig(cfg).AddPlugins(admin.NewAdmin(datamodel.Generators), examplePlugin).
-		Use(app); err != nil {
+	// load from golang.Plugin
+	//
+	// examplePlugin := plugins.LoadFromPlugin("../datamodel/example.so")
+
+	// customize the login page
+	// example: https://github.com/GoAdminGroup/go-admin/blob/master/demo/main.go#L30
+	//
+	// template.AddComp("login", datamodel.LoginPage)
+
+	// load config from json file
+	//
+	// eng.AddConfigFromJson("../datamodel/config.json")
+
+	if err := eng.AddConfig(cfg).AddPlugins(adminPlugin, examplePlugin).Use(app); err != nil {
 		panic(err)
 	}
 
 	// you can custom your pages like:
 
-	app.Handlers.Get("/"+cfg.PREFIX+"/custom", func(ctx *context.Context) {
-		engine.Content(ctx, func() types.Panel {
+	app.Handlers.Get("/admin", func(ctx *context.Context) {
+		engine.Content(ctx, func(ctx interface{}) (types.Panel, error) {
 			return datamodel.GetContent()
 		})
 	})

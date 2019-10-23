@@ -1,29 +1,15 @@
 package example
 
 import (
-	"github.com/chenhg5/go-admin/context"
-	"github.com/chenhg5/go-admin/modules/auth"
-	"github.com/chenhg5/go-admin/plugins/admin/controller"
+	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/auth"
 )
 
 func InitRouter(prefix string) *context.App {
+
 	app := context.NewApp()
-
-	authenticator := auth.SetPrefix(prefix).SetAuthFailCallback(func(ctx *context.Context) {
-		ctx.Write(302, map[string]string{
-			"Location": prefix + "/login",
-		}, ``)
-	}).SetPermissionDenyCallback(func(ctx *context.Context) {
-		controller.ShowErrorPage(ctx, "permission denied")
-	})
-
-	app.GET(prefix+"/example", authenticator.Middleware(TestHandler))
-
-	if prefix == "" {
-		app.GET(prefix+"/", authenticator.Middleware(TestHandler))
-	} else {
-		app.GET(prefix, authenticator.Middleware(TestHandler))
-	}
+	route := app.Group(prefix)
+	route.GET("/example", auth.Middleware, TestHandler)
 
 	return app
 }

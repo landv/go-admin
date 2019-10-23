@@ -1,27 +1,27 @@
 <p align="center">
-  <a href="https://github.com/chenhg5/go-admin">
-    <img width="50%" alt="go-admin" src="https://ws2.sinaimg.cn/large/006tNc79ly1ftvqf8qeddj31bz07e40e.jpg">
+  <a href="https://github.com/GoAdminGroup/go-admin">
+    <img width="50%" alt="go-admin" src="http://file.go-admin.cn/introduction/logo.png">
   </a>
 </p>
 
 <p align="center">
-    the missing golang data admin builder tool.
+    the missing golang data admin panel builder tool.
 </p>
 
 <p align="center">
-    <a href="http://doc.go-admin.cn">Documentation</a> | 
+    <a href="http://www.go-admin.cn/en">Documentation</a> | 
     <a href="./README_CN.md">中文文档</a> |
-    <a href="http://demo.go-admin.cn/admin">DEMO</a>
+    <a href="http://demo.en.go-admin.cn/admin">DEMO</a>
 </p>
 
 <p align="center">
-  <a href="https://api.travis-ci.org/chenhg5/go-admin"><img alt="Go Report Card" src="https://api.travis-ci.org/chenhg5/go-admin.svg?branch=master"></a>
-  <a href="https://goreportcard.com/report/github.com/chenhg5/go-admin"><img alt="Go Report Card" src="https://camo.githubusercontent.com/59eed852617e19c272a4a4764fd09c669957fe75/68747470733a2f2f676f7265706f7274636172642e636f6d2f62616467652f6769746875622e636f6d2f6368656e6867352f676f2d61646d696e"></a>
-  <a href="https://goreportcard.com/report/github.com/chenhg5/go-admin"><img alt="golang" src="https://img.shields.io/badge/awesome-golang-blue.svg"></a>
-  <a href="https://gitter.im/golangadmin/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link" rel="nofollow"><img alt="gitter" src="https://camo.githubusercontent.com/6bb364d591efcfeebc1b9eefaf18a4bdb3fc5158/68747470733a2f2f696d672e736869656c64732e696f2f6769747465722f726f6f6d2f646f63736966796a732f646f63736966792e7376673f7374796c653d666c61742d737175617265" style="max-width:100%;"></a>
+  <a href="https://travis-ci.com/GoAdminGroup/go-admin"><img alt="Go Report Card" src="https://api.travis-ci.com/GoAdminGroup/go-admin.svg?branch=master"></a>
+  <a href="https://goreportcard.com/report/github.com/GoAdminGroup/go-admin"><img alt="Go Report Card" src="https://camo.githubusercontent.com/59eed852617e19c272a4a4764fd09c669957fe75/68747470733a2f2f676f7265706f7274636172642e636f6d2f62616467652f6769746875622e636f6d2f6368656e6867352f676f2d61646d696e"></a>
+  <a href="https://goreportcard.com/report/github.com/GoAdminGroup/go-admin"><img alt="golang" src="https://img.shields.io/badge/awesome-golang-blue.svg"></a>
+  <a href="https://t.me/joinchat/NlyH6Bch2QARZkArithKvg" rel="nofollow"><img alt="telegram" src="https://img.shields.io/badge/chat%20on-telegram-blue" style="max-width:100%;"></a>
   <a href="https://jq.qq.com/?_wv=1027&k=5L3e3kS"><img alt="qq群" src="https://img.shields.io/badge/QQ-756664859-yellow.svg"></a>
-  <a href="https://godoc.org/github.com/chenhg5/go-admin" rel="nofollow"><img src="https://camo.githubusercontent.com/a9a286d43bdfff9fb41b88b25b35ea8edd2634fc/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f646572656b7061726b65722f64656c76653f7374617475732e737667" alt="GoDoc" data-canonical-src="https://godoc.org/github.com/derekparker/delve?status.svg" style="max-width:100%;"></a>
-  <a href="https://raw.githubusercontent.com/chenhg5/go-admin/master/LICENSE" rel="nofollow"><img src="https://camo.githubusercontent.com/e0d5267d60ee425acfe1a1f2d6e6d92a465dcd8f/687474703a2f2f696d672e736869656c64732e696f2f62616467652f6c6963656e73652d4d49542d626c75652e737667" alt="license" data-canonical-src="http://img.shields.io/badge/license-MIT-blue.svg" style="max-width:100%;"></a>
+  <a href="https://godoc.org/github.com/GoAdminGroup/go-admin" rel="nofollow"><img src="https://camo.githubusercontent.com/a9a286d43bdfff9fb41b88b25b35ea8edd2634fc/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f646572656b7061726b65722f64656c76653f7374617475732e737667" alt="GoDoc" data-canonical-src="https://godoc.org/github.com/derekparker/delve?status.svg" style="max-width:100%;"></a>
+  <a href="https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/LICENSE" rel="nofollow"><img src="https://img.shields.io/badge/license-Apache2.0-blue.svg" alt="license" data-canonical-src="https://img.shields.io/badge/license-Apache2.0-blue.svg" style="max-width:100%;"></a>
 </p> 
 
 <p align="center">
@@ -30,54 +30,57 @@
 
 ## Preface
 
-goAdmin is a toolkit help you to build a data visualization and manage platform for your golang app.
+GoAdmin is a toolkit help you to build a data visualization admin panel for your golang app.
 
-demo: [http://demo.go-admin.cn/admin](http://demo.go-admin.cn/admin)
+demo: [http://demo.en.go-admin.cn/admin](http://demo.en.go-admin.cn/admin)
 account: admin  password: admin
 
-![](https://ws1.sinaimg.cn/large/0069RVTdly1fv5jpbug82j31ap0pngrr.jpg)
+demo source code: https://github.com/GoAdminGroup/demo
 
-## Feature
+![interface](http://file.go-admin.cn/introduction/interface_en_2.png)
 
-- beautiful admin interface builder powerd by adminlte
-- many plugins to use
-- powerful auth manage system
-- support most of the go web framework
+## Features
+
+- 🚀 **Fast**: build a production admin panel app in **ten** minutes.
+- 🎨 **Theming**: beautiful ui themes supported(default adminlte, more themes are coming.)
+- 🔢 **Plugins**: many plugins to use(more useful and powerful plugins are coming.)
+- ✅ **Rbac**: out of box rbac auth system.
+- ⚙️ **Frameworks**: support most of the go web frameworks.
+
+## Translation
+We need your help: [https://github.com/GoAdminGroup/docs/issues/1](https://github.com/GoAdminGroup/docs/issues/1)
+
+## Who is using
+
+[Comment the issue to tell us](https://github.com/GoAdminGroup/go-admin/issues/71).
 
 ## How to
 
-see the [docs](http://doc.go-admin.cn) for detail
+Following three steps to run it.
 
-### install
+### Step 1: import sql
 
-```
-$ go get -v -u github.com/chenhg5/go-admin
-```
+[mysql](https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/data/admin.sql)
+[postgresql](https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/data/admin.pgsql)
+[sqlite](https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/data/admin.db)
 
-### import sql
+### Step 2: create main.go
 
-[https://github.com/chenhg5/go-admin/blob/master/examples/datamodel/admin.sql](https://github.com/chenhg5/go-admin/blob/master/examples/datamodel/admin.sql)
-
-### generate the data model use cli tool
-
-```
-$ go install github.com/chenhg5/go-admin/admincli
-
-$ admincli generate
-```
-
-### gin example
+<details><summary>main.go</summary>
+<p>
 
 ```go
 package main
 
 import (
 	"github.com/gin-gonic/gin"
-	_ "github.com/chenhg5/go-admin/adapter/gin"
-	"github.com/chenhg5/go-admin/engine"
-	"github.com/chenhg5/go-admin/plugins/admin"
-	"github.com/chenhg5/go-admin/modules/config"
-	"github.com/chenhg5/go-admin/examples/datamodel"
+	_ "github.com/GoAdminGroup/go-admin/adapter/gin"
+	"github.com/GoAdminGroup/go-admin/engine"
+	"github.com/GoAdminGroup/go-admin/plugins/admin"
+	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/themes/adminlte"
+	"github.com/GoAdminGroup/go-admin/examples/datamodel"
+	"github.com/GoAdminGroup/go-admin/modules/language"
 )
 
 func main() {
@@ -87,57 +90,76 @@ func main() {
 
 	// global config
 	cfg := config.Config{
-		DATABASE: []config.Database{
-			{
-				HOST:         "127.0.0.1",
-				PORT:         "3306",
-				USER:         "root",
-				PWD:          "root",
-				NAME:         "godmin",
-				MAX_IDLE_CON: 50,
-				MAX_OPEN_CON: 150,
-				DRIVER:       "mysql",
+		Databases: config.DatabaseList{
+			"default": {
+				Host:         "127.0.0.1",
+				Port:         "3306",
+				User:         "root",
+				Pwd:          "root",
+				Name:         "godmin",
+				MaxIdleCon: 50,
+				MaxOpenCon: 150,
+				Driver:       "mysql",
 			},
         	},
-		DOMAIN: "localhost", // the domain of cookie which be used when visiting your site.
-		PREFIX: "admin",
+		UrlPrefix: "admin",
 		// STORE is important. And the directory should has permission to write.
-		STORE: config.Store{
-		    PATH:   "./uploads", 
-		    PREFIX: "uploads",
+		Store: config.Store{
+		    Path:   "./uploads", 
+		    Prefix: "uploads",
 		},
-		LANGUAGE: "en",
+		Language: language.EN,
 		// debug mode
-		DEBUG: true,
+		Debug: true,
 		// log file absolute path
-		INFOLOG: "/var/logs/info.log",
-		ACCESSLOG: "/var/logs/access.log",
-		ERRORLOG: "/var/logs/error.log",
+		InfoLogPath: "/var/logs/info.log",
+		AccessLogPath: "/var/logs/access.log",
+		ErrorLogPath: "/var/logs/error.log",
+		ColorScheme: adminlte.ColorschemeSkinBlack,
 	}
 
-    	// Generators: see https://github.com/chenhg5/go-admin/blob/master/examples/datamodel/tables.go 
+    	// Generators: see https://github.com/GoAdminGroup/go-admin/blob/master/examples/datamodel/tables.go 
 	adminPlugin := admin.NewAdmin(datamodel.Generators)
+	
+	// add generator, first parameter is the url prefix of table when visit.
+    	// example:
+    	//
+    	// "user" => http://localhost:9033/admin/info/user
+    	//
+    	adminPlugin.AddGenerator("user", datamodel.GetUserTable)
 
-	eng.AddConfig(cfg).AddPlugins(adminPlugin).Use(r)
+	_ = eng.AddConfig(cfg).AddPlugins(adminPlugin).Use(r)
 
-	r.Run(":9033")
+	_ = r.Run(":9033")
 }
 ```
 
-More Examples: [https://github.com/chenhg5/go-admin/tree/master/examples](https://github.com/chenhg5/go-admin/tree/master/examples)
+</p>
+</details>
 
-## Powerd by
+More Examples: [https://github.com/GoAdminGroup/go-admin/tree/master/examples](https://github.com/GoAdminGroup/go-admin/tree/master/examples)
 
-- [adminlte](https://adminlte.io/themes/AdminLTE/index2.html)
+### Step 3: run
+
+```shell
+GO111MODULE=on go run main.go
+```
+
+visit: [http://localhost:9033/admin](http://localhost:9033/admin)
+
+[A super simple example here](https://github.com/GoAdminGroup/example)
+
+See the [docs](http://go-admin.cn/en/docs/#/README) for more details.
+
+## Backers
+
+ Your support will help me do better! [[Become a backer](https://opencollective.com/go-admin#backer)]
+ <a href="https://opencollective.com/go-admin#backers" target="_blank"><img src="https://opencollective.com/go-admin/backers.svg?width=890"></a>
 
 ## Contribution
 
-very welcome to pr
+[here for contribution guide](CONTRIBUTING.md)
 
 <strong>here to join into the develop team</strong>
 
-QQ Group Num: 756664859, remember to add the reason of apply.
-
-## Special thanks
-
-inspired by [laravel-admin](https://github.com/z-song/laravel-admin)
+[join telegram](https://t.me/joinchat/NlyH6Bch2QARZkArithKvg)

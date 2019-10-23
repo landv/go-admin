@@ -1,33 +1,36 @@
 package example
 
 import (
-	"github.com/chenhg5/go-admin/context"
-	"github.com/chenhg5/go-admin/modules/config"
-	"github.com/chenhg5/go-admin/plugins"
+	"github.com/GoAdminGroup/go-admin/context"
+	c "github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/plugins"
 )
 
 type Example struct {
 	app *context.App
 }
 
-var Plug = new(Example)
-
-var Config config.Config
-
-func (example *Example) InitPlugin() {
-	Config = config.Get()
-	Config.PREFIX = "/" + Config.PREFIX
-	Plug.app = InitRouter(Config.PREFIX)
-}
-
 func NewExample() *Example {
 	return Plug
+}
+
+var Plug = new(Example)
+
+var config c.Config
+
+func SetConfig(cfg c.Config) {
+	config = cfg
+}
+
+func (example *Example) InitPlugin() {
+	config = c.Get()
+	Plug.app = InitRouter(config.Prefix())
 }
 
 func (example *Example) GetRequest() []context.Path {
 	return example.app.Requests
 }
 
-func (example *Example) GetHandler(url, method string) context.Handler {
+func (example *Example) GetHandler(url, method string) context.Handlers {
 	return plugins.GetHandler(url, method, example.app)
 }

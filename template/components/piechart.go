@@ -1,7 +1,7 @@
 package components
 
 import (
-	"github.com/chenhg5/go-admin/template/types"
+	"github.com/GoAdminGroup/go-admin/template/types"
 	"html/template"
 )
 
@@ -10,7 +10,7 @@ type PieChartAttribute struct {
 	ID     string
 	Height int
 	Data   string
-	Title  string
+	Title  template.HTML
 	types.Attribute
 }
 
@@ -19,7 +19,7 @@ func (compo *PieChartAttribute) SetID(value string) types.PieChartAttribute {
 	return compo
 }
 
-func (compo *PieChartAttribute) SetTitle(value string) types.PieChartAttribute {
+func (compo *PieChartAttribute) SetTitle(value template.HTML) types.PieChartAttribute {
 	compo.Title = value
 	return compo
 }

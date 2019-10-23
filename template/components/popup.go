@@ -1,7 +1,7 @@
 package components
 
 import (
-	"github.com/chenhg5/go-admin/template/types"
+	"github.com/GoAdminGroup/go-admin/template/types"
 	"html/template"
 )
 
@@ -9,8 +9,8 @@ type PopupAttribute struct {
 	Name   string
 	ID     string
 	Body   template.HTML
-	Footer string
-	Title  string
+	Footer template.HTML
+	Title  template.HTML
 	Size   string
 	types.Attribute
 }
@@ -20,12 +20,12 @@ func (compo *PopupAttribute) SetID(value string) types.PopupAttribute {
 	return compo
 }
 
-func (compo *PopupAttribute) SetTitle(value string) types.PopupAttribute {
+func (compo *PopupAttribute) SetTitle(value template.HTML) types.PopupAttribute {
 	compo.Title = value
 	return compo
 }
 
-func (compo *PopupAttribute) SetFooter(value string) types.PopupAttribute {
+func (compo *PopupAttribute) SetFooter(value template.HTML) types.PopupAttribute {
 	compo.Footer = value
 	return compo
 }

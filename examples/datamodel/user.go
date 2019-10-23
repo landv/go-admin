@@ -1,173 +1,87 @@
 package datamodel
 
 import (
-	"github.com/chenhg5/go-admin/plugins/admin/models"
-	"github.com/chenhg5/go-admin/template/types"
-	"github.com/chenhg5/go-admin/template/types/form"
+	"fmt"
+	"github.com/GoAdminGroup/go-admin/modules/db"
+	form2 "github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
+	"github.com/GoAdminGroup/go-admin/template/types"
+	"github.com/GoAdminGroup/go-admin/template/types/form"
 )
 
-func GetUserTable() (userTable models.Table) {
+func GetUserTable() (userTable table.Table) {
 
-	userTable = models.NewDefaultTable(models.DefaultTableConfig)
+	userTable = table.NewDefaultTable(table.Config{
+		Driver:     db.DriverMysql,
+		CanAdd:     true,
+		Editable:   true,
+		Deletable:  true,
+		Exportable: true,
+		Connection: table.DefaultConnectionName,
+		PrimaryKey: table.PrimaryKey{
+			Type: db.Int,
+			Name: table.DefaultPrimaryKeyName,
+		},
+	})
 
-	userTable.GetInfo().FieldList = []types.Field{
-		{
-			Head:     "ID",
-			Field:    "id",
-			TypeName: "int",
-			Sortable: true,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		},
-		{
-			Head:     "Name",
-			Field:    "name",
-			TypeName: "varchar",
-			Sortable: false,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		},
-		{
-			Head:     "Gender",
-			Field:    "gender",
-			TypeName: "tinyint",
-			Sortable: false,
-			ExcuFun: func(model types.RowModel) interface{} {
-				if model.Value == "1" {
-					return "man"
-				}
-				if model.Value == "2" {
-					return "women"
-				}
-				return "unknown"
-			},
-		},
-		{
-			Head:     "Phone",
-			Field:    "phone",
-			TypeName: "varchar",
-			Sortable: false,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		},
-		{
-			Head:     "City",
-			Field:    "city",
-			TypeName: "varchar",
-			Sortable: false,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		},
-	}
+	info := userTable.GetInfo()
+	info.AddField("ID", "id", db.Int).FieldSortable()
+	info.AddField("Name", "name", db.Varchar)
+	info.AddField("Gender", "gender", db.Tinyint).FieldDisplay(func(model types.FieldModel) interface{} {
+		if model.Value == "0" {
+			return "men"
+		}
+		if model.Value == "1" {
+			return "women"
+		}
+		return "unknown"
+	})
+	info.AddField("Phone", "phone", db.Varchar)
+	info.AddField("City", "city", db.Varchar)
+	info.AddField("createdAt", "created_at", db.Timestamp)
+	info.AddField("updatedAt", "updated_at", db.Timestamp)
 
-	userTable.GetInfo().Table = "users"
-	userTable.GetInfo().Title = "Users"
-	userTable.GetInfo().Description = "Users"
+	info.SetTable("users").SetTitle("Users").SetDescription("Users")
 
-	userTable.GetForm().FormList = []types.Form{
-		{
-			Head:     "ID",
-			Field:    "id",
-			TypeName: "int",
-			Default:  "",
-			Editable: false,
-			FormType: form.Default,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
+	formList := userTable.GetForm()
+	formList.AddField("ID", "id", db.Int, form.Default).FieldNotAllowEdit()
+	formList.AddField("Ip", "ip", db.Varchar, form.Text)
+	formList.AddField("Name", "name", db.Varchar, form.Text)
+	formList.AddField("Gender", "gender", db.Tinyint, form.Radio).
+		FieldOptions([]map[string]string{
+			{
+				"field":    "gender",
+				"label":    "male",
+				"value":    "0",
+				"selected": "true",
+			}, {
+				"field":    "gender",
+				"label":    "female",
+				"value":    "1",
+				"selected": "false",
 			},
-		}, {
-			Head:     "Ip",
-			Field:    "ip",
-			TypeName: "varchar",
-			Default:  "",
-			Editable: true,
-			FormType: form.Text,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		}, {
-			Head:     "Name",
-			Field:    "name",
-			TypeName: "varchar",
-			Default:  "",
-			Editable: true,
-			FormType: form.Text,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		}, {
-			Head:     "Gender",
-			Field:    "gender",
-			TypeName: "tinyint",
-			Default:  "",
-			Editable: true,
-			Options: []map[string]string{
-				{
-					"field":    "gender",
-					"label":    "male",
-					"value":    "0",
-					"selected": "true",
-				}, {
-					"field":    "gender",
-					"label":    "female",
-					"value":    "1",
-					"selected": "false",
-				},
-			},
-			FormType: form.Radio,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		}, {
-			Head:     "Phone",
-			Field:    "phone",
-			TypeName: "varchar",
-			Default:  "",
-			Editable: true,
-			FormType: form.Text,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		}, {
-			Head:     "City",
-			Field:    "city",
-			TypeName: "varchar",
-			Default:  "",
-			Editable: true,
-			FormType: form.Text,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		}, {
-			Head:     "Created at",
-			Field:    "created_at",
-			TypeName: "varchar",
-			Default:  "2017-01-05 23:01:17",
-			Editable: true,
-			FormType: form.Datetime,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		}, {
-			Head:     "Updated at",
-			Field:    "updated_at",
-			TypeName: "varchar",
-			Default:  "2017-01-05 23:01:17",
-			Editable: true,
-			FormType: form.Datetime,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		},
-	}
+		})
+	formList.AddField("Phone", "phone", db.Varchar, form.Text)
+	formList.AddField("City", "city", db.Varchar, form.Text)
+	formList.AddField("Custom Field", "role", db.Varchar, form.Text).
+		FieldPostFilterFn(func(value types.PostFieldModel) string {
+			fmt.Println("user custom field", value)
+			return ""
+		})
 
-	userTable.GetForm().Table = "users"
-	userTable.GetForm().Title = "Users"
-	userTable.GetForm().Description = "Users"
+	formList.AddField("updatedAt", "updated_at", db.Timestamp, form.Default).FieldNotAllowAdd()
+	formList.AddField("createdAt", "created_at", db.Timestamp, form.Default).FieldNotAllowAdd()
+
+	userTable.GetForm().SetTabGroups(types.
+		NewTabGroups("id", "ip", "name", "gender", "city").
+		AddGroup("phone", "role", "created_at", "updated_at")).
+		SetTabHeaders("profile1", "profile2")
+
+	formList.SetTable("users").SetTitle("Users").SetDescription("Users")
+
+	formList.SetPostHook(func(values form2.Values) {
+		fmt.Println("userTable.GetForm().PostHook", values)
+	})
 
 	return
 }

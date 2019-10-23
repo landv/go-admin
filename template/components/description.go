@@ -1,27 +1,27 @@
 package components
 
 import (
-	"github.com/chenhg5/go-admin/template/types"
+	"github.com/GoAdminGroup/go-admin/template/types"
 	"html/template"
 )
 
 type DescriptionAttribute struct {
 	Name    string
 	Border  string
-	Number  string
-	Title   string
+	Number  template.HTML
+	Title   template.HTML
 	Arrow   string
-	Color   string
-	Percent string
+	Color   template.HTML
+	Percent template.HTML
 	types.Attribute
 }
 
-func (compo *DescriptionAttribute) SetNumber(value string) types.DescriptionAttribute {
+func (compo *DescriptionAttribute) SetNumber(value template.HTML) types.DescriptionAttribute {
 	compo.Number = value
 	return compo
 }
 
-func (compo *DescriptionAttribute) SetTitle(value string) types.DescriptionAttribute {
+func (compo *DescriptionAttribute) SetTitle(value template.HTML) types.DescriptionAttribute {
 	compo.Title = value
 	return compo
 }
@@ -31,12 +31,12 @@ func (compo *DescriptionAttribute) SetArrow(value string) types.DescriptionAttri
 	return compo
 }
 
-func (compo *DescriptionAttribute) SetPercent(value string) types.DescriptionAttribute {
+func (compo *DescriptionAttribute) SetPercent(value template.HTML) types.DescriptionAttribute {
 	compo.Percent = value
 	return compo
 }
 
-func (compo *DescriptionAttribute) SetColor(value string) types.DescriptionAttribute {
+func (compo *DescriptionAttribute) SetColor(value template.HTML) types.DescriptionAttribute {
 	compo.Color = value
 	return compo
 }

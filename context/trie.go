@@ -1,5 +1,5 @@
-// Copyright 2018 cg33.  All rights reserved.
-// Use of this source code is governed by a MIT style
+// Copyright 2019 GoAdmin Core Team.  All rights reserved.
+// Use of this source code is governed by a Apache-2.0 style
 // license that can be found in the LICENSE file.
 
 package context
@@ -10,7 +10,7 @@ type node struct {
 	children []*node
 	value    string
 	method   string
-	handle   Handler
+	handle   []Handler
 }
 
 func Tree() *node {
@@ -46,7 +46,7 @@ func (n *node) search(value string) *node {
 	return nil
 }
 
-func (n *node) addPath(paths []string, method string, handler Handler) {
+func (n *node) addPath(paths []string, method string, handler []Handler) {
 	if len(paths) > 0 {
 		child := n.addContent(paths[0])
 		if len(paths) > 1 {
@@ -58,7 +58,7 @@ func (n *node) addPath(paths []string, method string, handler Handler) {
 	}
 }
 
-func (n *node) findPath(paths []string, method string) Handler {
+func (n *node) findPath(paths []string, method string) []Handler {
 	if len(paths) > 0 {
 		child := n.search(paths[0])
 		if child == nil {
@@ -93,8 +93,8 @@ func stringToArr(path string) []string {
 	var (
 		paths      = make([]string, 0)
 		start      = 0
-		end        = 0
-		iswildcard = false
+		end        int
+		isWildcard = false
 	)
 	for i := 0; i < len(path); i++ {
 		if i == 0 && path[0] == '/' {
@@ -102,11 +102,11 @@ func stringToArr(path string) []string {
 			continue
 		}
 		if path[i] == ':' {
-			iswildcard = true
+			isWildcard = true
 		}
 		if i == len(path)-1 {
 			end = i + 1
-			if iswildcard {
+			if isWildcard {
 				paths = append(paths, "*")
 			} else {
 				paths = append(paths, path[start:end])
@@ -114,13 +114,13 @@ func stringToArr(path string) []string {
 		}
 		if path[i] == '/' {
 			end = i
-			if iswildcard {
+			if isWildcard {
 				paths = append(paths, "*")
 			} else {
 				paths = append(paths, path[start:end])
 			}
 			start = i + 1
-			iswildcard = false
+			isWildcard = false
 		}
 	}
 	return paths

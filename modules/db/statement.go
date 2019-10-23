@@ -1,39 +1,23 @@
-// Copyright 2018 cg33.  All rights reserved.
-// Use of this source code is governed by a MIT style
+// Copyright 2019 GoAdmin Core Team.  All rights reserved.
+// Use of this source code is governed by a Apache-2.0 style
 // license that can be found in the LICENSE file.
 
 package db
 
 import (
 	"errors"
-	"github.com/chenhg5/go-admin/modules/db/dialect"
+	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
+	"github.com/GoAdminGroup/go-admin/modules/logger"
 	"strconv"
 	"strings"
 	"sync"
 )
 
-type Where struct {
-	operation string
-	field     string
-	qmark     string
-}
-
-type Join struct {
-	table     string
-	fieldA    string
-	operation string
-	fieldB    string
-}
-
-type RawUpdate struct {
-	expression string
-	args       []interface{}
-}
-
 type Sql struct {
 	dialect.SqlComponent
 	diver   Connection
 	dialect dialect.Dialect
+	conn    string
 }
 
 var SqlPool = sync.Pool{
@@ -69,6 +53,7 @@ func Table(table string) *Sql {
 	sql.TableName = table
 	sql.diver = GetConnection()
 	sql.dialect = dialect.GetDialect()
+	sql.conn = "default"
 	return sql
 }
 
@@ -76,6 +61,20 @@ func WithDriver(driver string) *Sql {
 	sql := newSql()
 	sql.diver = GetConnectionByDriver(driver)
 	sql.dialect = dialect.GetDialectByDriver(driver)
+	sql.conn = "default"
+	return sql
+}
+
+func WithDriverAndConnection(conn, driver string) *Sql {
+	sql := newSql()
+	sql.diver = GetConnectionByDriver(driver)
+	sql.dialect = dialect.GetDialectByDriver(driver)
+	sql.conn = conn
+	return sql
+}
+
+func (sql *Sql) WithConnection(conn string) *Sql {
+	sql.conn = conn
 	return sql
 }
 
@@ -89,8 +88,17 @@ func (sql *Sql) Select(fields ...string) *Sql {
 	return sql
 }
 
-func (sql *Sql) OrderBy(filed string, order string) *Sql {
-	sql.Order = "`" + filed + "` " + order
+func (sql *Sql) OrderBy(fields ...string) *Sql {
+	if len(fields) == 0 {
+		panic("wrong order field")
+	}
+	for i := 0; i < len(fields); i++ {
+		if i == len(fields)-2 {
+			sql.Order += " " + sql.filed(fields[i]) + " " + fields[i+1]
+			return sql
+		}
+		sql.Order += " " + sql.filed(fields[i]) + " and "
+	}
 	return sql
 }
 
@@ -191,7 +199,11 @@ func (sql *Sql) First() (map[string]interface{}, error) {
 
 	sql.dialect.Select(&sql.SqlComponent)
 
-	res, _ := sql.diver.Query(sql.Statement, sql.Args...)
+	res, err := sql.diver.QueryWithConnection(sql.conn, sql.Statement, sql.Args...)
+
+	if err != nil {
+		return nil, err
+	}
 
 	if len(res) < 1 {
 		return nil, errors.New("out of index")
@@ -204,25 +216,19 @@ func (sql *Sql) All() ([]map[string]interface{}, error) {
 
 	sql.dialect.Select(&sql.SqlComponent)
 
-	res, _ := sql.diver.Query(sql.Statement, sql.Args...)
-
-	return res, nil
+	return sql.diver.QueryWithConnection(sql.conn, sql.Statement, sql.Args...)
 }
 
 func (sql *Sql) ShowColumns() ([]map[string]interface{}, error) {
 	defer RecycleSql(sql)
 
-	res, _ := sql.diver.Query(sql.dialect.ShowColumns(sql.TableName))
-
-	return res, nil
+	return sql.diver.QueryWithConnection(sql.conn, sql.dialect.ShowColumns(sql.TableName))
 }
 
 func (sql *Sql) ShowTables() ([]map[string]interface{}, error) {
 	defer RecycleSql(sql)
 
-	res, _ := sql.diver.Query(sql.dialect.ShowTables())
-
-	return res, nil
+	return sql.diver.QueryWithConnection(sql.conn, sql.dialect.ShowTables())
 }
 
 func (sql *Sql) Update(values dialect.H) (int64, error) {
@@ -232,7 +238,11 @@ func (sql *Sql) Update(values dialect.H) (int64, error) {
 
 	sql.dialect.Update(&sql.SqlComponent)
 
-	res := sql.diver.Exec(sql.Statement, sql.Args...)
+	res, err := sql.diver.ExecWithConnection(sql.conn, sql.Statement, sql.Args...)
+
+	if err != nil {
+		return 0, err
+	}
 
 	if affectRow, _ := res.RowsAffected(); affectRow < 1 {
 		return 0, errors.New("no affect row")
@@ -246,7 +256,11 @@ func (sql *Sql) Delete() error {
 
 	sql.dialect.Delete(&sql.SqlComponent)
 
-	res := sql.diver.Exec(sql.Statement, sql.Args...)
+	res, err := sql.diver.ExecWithConnection(sql.conn, sql.Statement, sql.Args...)
+
+	if err != nil {
+		return err
+	}
 
 	if affectRow, _ := res.RowsAffected(); affectRow < 1 {
 		return errors.New("no affect row")
@@ -260,7 +274,11 @@ func (sql *Sql) Exec() (int64, error) {
 
 	sql.dialect.Update(&sql.SqlComponent)
 
-	res := sql.diver.Exec(sql.Statement, sql.Args...)
+	res, err := sql.diver.ExecWithConnection(sql.conn, sql.Statement, sql.Args...)
+
+	if err != nil {
+		return 0, err
+	}
 
 	if affectRow, _ := res.RowsAffected(); affectRow < 1 {
 		return 0, errors.New("no affect row")
@@ -276,7 +294,29 @@ func (sql *Sql) Insert(values dialect.H) (int64, error) {
 
 	sql.dialect.Insert(&sql.SqlComponent)
 
-	res := sql.diver.Exec(sql.Statement, sql.Args...)
+	if sql.diver.GetName() == DriverPostgresql {
+		if sql.TableName == "goadmin_menu" ||
+			sql.TableName == "goadmin_permissions" ||
+			sql.TableName == "goadmin_roles" ||
+			sql.TableName == "goadmin_users" {
+			res, err := sql.diver.QueryWithConnection(sql.conn, sql.Statement+" RETURNING id", sql.Args...)
+
+			if err != nil {
+				return 0, err
+			}
+
+			if len(res) == 0 {
+				return 0, errors.New("no affect row")
+			}
+			return res[0]["id"].(int64), nil
+		}
+	}
+
+	res, err := sql.diver.ExecWithConnection(sql.conn, sql.Statement, sql.Args...)
+
+	if err != nil {
+		return 0, err
+	}
 
 	if affectRow, _ := res.RowsAffected(); affectRow < 1 {
 		return 0, errors.New("no affect row")
@@ -285,16 +325,14 @@ func (sql *Sql) Insert(values dialect.H) (int64, error) {
 	return res.LastInsertId()
 }
 
-func (sql *Sql) empty() *Sql {
-	sql.Fields = make([]string, 0)
-	sql.Args = make([]interface{}, 0)
-	sql.TableName = ""
-	sql.Wheres = make([]dialect.Where, 0)
-	sql.Leftjoins = make([]dialect.Join, 0)
-	return sql
+func (sql *Sql) filed(filed string) string {
+	return sql.diver.GetDelimiter() + filed + sql.diver.GetDelimiter()
 }
 
 func RecycleSql(sql *Sql) {
+
+	logger.LogSql(sql.Statement, sql.Args)
+
 	sql.Fields = make([]string, 0)
 	sql.TableName = ""
 	sql.Wheres = make([]dialect.Where, 0)

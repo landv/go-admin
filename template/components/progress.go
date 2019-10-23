@@ -1,27 +1,32 @@
 package components
 
 import (
-	"github.com/chenhg5/go-admin/template/types"
+	"github.com/GoAdminGroup/go-admin/template/types"
 	"html/template"
+	"strings"
 )
 
 type ProgressGroupAttribute struct {
 	Name        string
-	Title       string
+	Title       template.HTML
 	Molecular   int
 	Denominator int
-	Color       string
+	Color       template.HTML
+	IsHexColor  bool
 	Percent     int
 	types.Attribute
 }
 
-func (compo *ProgressGroupAttribute) SetTitle(value string) types.ProgressGroupAttribute {
+func (compo *ProgressGroupAttribute) SetTitle(value template.HTML) types.ProgressGroupAttribute {
 	compo.Title = value
 	return compo
 }
 
-func (compo *ProgressGroupAttribute) SetColor(value string) types.ProgressGroupAttribute {
+func (compo *ProgressGroupAttribute) SetColor(value template.HTML) types.ProgressGroupAttribute {
 	compo.Color = value
+	if strings.Contains(string(value), "#") {
+		compo.IsHexColor = true
+	}
 	return compo
 }
 

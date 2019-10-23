@@ -1,32 +1,22 @@
-// Copyright 2018 cg33.  All rights reserved.
-// Use of this source code is governed by a MIT style
+// Copyright 2019 GoAdmin Core Team.  All rights reserved.
+// Use of this source code is governed by a Apache-2.0 style
 // license that can be found in the LICENSE file.
 
 package auth
 
 import (
-	"github.com/chenhg5/go-admin/context"
-	"github.com/chenhg5/go-admin/modules/config"
-	"github.com/chenhg5/go-admin/modules/db"
+	"fmt"
+	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/modules/language"
+	"github.com/GoAdminGroup/go-admin/modules/page"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
+	template2 "github.com/GoAdminGroup/go-admin/template"
+	"github.com/GoAdminGroup/go-admin/template/types"
+	"html/template"
 	"regexp"
 	"strings"
 )
-
-type User struct {
-	ID          string
-	Level       string
-	Name        string
-	LevelName   string
-	CreateAt    string
-	Avatar      string
-	Permissions []Permission
-	Menus       []int64
-}
-
-type Permission struct {
-	Method []string
-	Path   []string
-}
 
 type Invoker struct {
 	prefix                 string
@@ -34,19 +24,36 @@ type Invoker struct {
 	permissionDenyCallback MiddlewareCallback
 }
 
-func (user User) IsSuperAdmin() bool {
-	for _, per := range user.Permissions {
-		if len(per.Path) > 0 && per.Path[0] == "*" {
-			return true
-		}
+var Middleware = DefaultInvoker().Middleware()
+
+func DefaultInvoker() *Invoker {
+	return &Invoker{
+		prefix: config.Get().Prefix(),
+		authFailCallback: func(ctx *context.Context) {
+			ctx.Write(302, map[string]string{
+				"Location": config.Get().Url("/login"),
+			}, ``)
+		},
+		permissionDenyCallback: func(ctx *context.Context) {
+			page.SetPageContent(ctx, Auth(ctx), func(ctx interface{}) (types.Panel, error) {
+				alert := template2.Get(config.Get().Theme).Alert().
+					SetTitle(template.HTML(`<i class="icon fa fa-warning"></i> ` + language.Get("error") + `!`)).
+					SetTheme("warning").SetContent(template.HTML("permission denied")).GetContent()
+
+				return types.Panel{
+					Content:     alert,
+					Description: "Error",
+					Title:       "Error",
+				}, nil
+			})
+		},
 	}
-	return false
 }
 
 func SetPrefix(prefix string) *Invoker {
-	return &Invoker{
-		prefix: prefix,
-	}
+	i := DefaultInvoker()
+	i.prefix = prefix
+	return i
 }
 
 func (invoker *Invoker) SetAuthFailCallback(callback MiddlewareCallback) *Invoker {
@@ -61,40 +68,43 @@ func (invoker *Invoker) SetPermissionDenyCallback(callback MiddlewareCallback) *
 
 type MiddlewareCallback func(ctx *context.Context)
 
-func (invoker *Invoker) Middleware(h context.Handler) context.Handler {
+func (invoker *Invoker) Middleware() context.Handler {
 	return func(ctx *context.Context) {
 		user, authOk, permissionOk := Filter(ctx)
 
 		if authOk && permissionOk {
 			ctx.SetUserValue("user", user)
-			h(ctx)
+			ctx.Next()
 			return
 		}
 
 		if !authOk {
 			invoker.authFailCallback(ctx)
+			ctx.Abort()
 			return
 		}
 
 		if !permissionOk {
 			ctx.SetUserValue("user", user)
 			invoker.permissionDenyCallback(ctx)
+			ctx.Abort()
 			return
 		}
 	}
 }
 
-func Filter(ctx *context.Context) (User, bool, bool) {
+func Filter(ctx *context.Context) (models.UserModel, bool, bool) {
 	var (
-		id   string
+		id   float64
 		ok   bool
-		user User
+		user = models.User()
 	)
-	if id, ok = InitSession(ctx).Get("user_id").(string); !ok {
+
+	if id, ok = InitSession(ctx).Get("user_id").(float64); !ok {
 		return user, false, false
 	}
 
-	user, ok = GetCurUserById(id)
+	user, ok = GetCurUserById(int64(id))
 
 	if !ok {
 		return user, false, false
@@ -103,114 +113,45 @@ func Filter(ctx *context.Context) (User, bool, bool) {
 	return user, true, CheckPermissions(user, ctx.Path(), ctx.Method())
 }
 
-func GetCurUserById(id string) (user User, ok bool) {
-	admin, _ := db.Table("goadmin_users").Find(id)
+func GetCurUserById(id int64) (user models.UserModel, ok bool) {
 
-	if admin == nil {
+	user = models.User().Find(id)
+
+	if user.IsEmpty() {
 		ok = false
 		return
 	}
 
-	roleModel, _ := db.Table("goadmin_role_users").
-		LeftJoin("goadmin_roles", "goadmin_roles.id", "=", "goadmin_role_users.role_id").
-		Where("user_id", "=", id).
-		Select("goadmin_roles.id", "goadmin_roles.name", "goadmin_roles.slug").
-		First()
-
-	user.ID = id
-	user.Level = roleModel["slug"].(string)
-	user.LevelName = roleModel["name"].(string)
-	user.Name = admin["name"].(string)
-	user.CreateAt = admin["created_at"].(string)
-	if admin["avatar"].(string) == "" || config.Get().STORE.PREFIX == "" {
+	if user.Avatar == "" || config.Get().Store.Prefix == "" {
 		user.Avatar = ""
 	} else {
-		user.Avatar = "/" + config.Get().STORE.PREFIX + "/" + admin["avatar"].(string)
+		user.Avatar = "/" + config.Get().Store.Prefix + "/" + user.Avatar
 	}
 
-	// TODO: 支持多角色
-	permissionModel := GetPermissions(roleModel["id"])
-	var permissions []Permission
-	for i := 0; i < len(permissionModel); i++ {
-
-		var methodArr []string
-
-		if permissionModel[i]["http_method"].(string) != "" {
-			methodArr = strings.Split(permissionModel[i]["http_method"].(string), ",")
-		} else {
-			methodArr = []string{""}
-		}
-		permissions = append(permissions, Permission{
-			methodArr,
-			strings.Split(permissionModel[i]["http_path"].(string), "\n"),
-		})
-	}
-
-	user.Permissions = permissions
-
-	menuIdsModel, _ := db.Table("goadmin_role_menu").
-		LeftJoin("goadmin_menu", "goadmin_menu.id", "=", "goadmin_role_menu.menu_id").
-		Where("goadmin_role_menu.role_id", "=", roleModel["id"]).
-		Select("menu_id", "parent_id").
-		All()
-
-	var menuIds []int64
-
-	for _, mid := range menuIdsModel {
-		if parentId, ok := mid["parent_id"].(int64); ok && parentId != 0 {
-			for _, mid2 := range menuIdsModel {
-				if mid2["menu_id"].(int64) == mid["parent_id"].(int64) {
-					menuIds = append(menuIds, mid["menu_id"].(int64))
-					break
-				}
-			}
-		} else {
-			menuIds = append(menuIds, mid["menu_id"].(int64))
-		}
-	}
-
-	user.Menus = menuIds
+	user = user.WithRoles().WithPermissions().WithMenus()
 
 	ok = true
 
 	return
 }
 
-func GetPermissions(roleId interface{}) []map[string]interface{} {
-	permissions, _ := db.Table("goadmin_role_permissions").
-		LeftJoin("goadmin_permissions", "goadmin_permissions.id", "=", "goadmin_role_permissions.permission_id").
-		Where("role_id", "=", roleId).
-		Select("goadmin_permissions.http_method", "goadmin_permissions.http_path").
-		All()
+func CheckPermissions(user models.UserModel, path string, method string) bool {
 
-	return permissions
-}
-
-func CheckPermissions(user User, path string, method string) bool {
-
-	prefix := "/" + config.Get().PREFIX
-
-	if path == prefix+"/logout" {
+	if path == config.Get().Url("/logout") {
 		return true
 	}
 
 	for _, v := range user.Permissions {
 
-		if v.Method[0] == "" || InMethodArr(v.Method, method) {
+		if v.HttpMethod[0] == "" || InMethodArr(v.HttpMethod, method) {
 
-			if v.Path[0] == "*" {
+			if v.HttpPath[0] == "*" {
 				return true
 			}
 
-			for i := 0; i < len(v.Path); i++ {
+			for i := 0; i < len(v.HttpPath); i++ {
 
-				matchPath := ""
-
-				if v.Path[i] == "/" {
-					matchPath = prefix
-				} else {
-					matchPath = prefix + v.Path[i]
-				}
+				matchPath := config.Get().Url(strings.TrimSpace(v.HttpPath[i]))
 
 				if matchPath == path {
 					return true
@@ -219,6 +160,7 @@ func CheckPermissions(user User, path string, method string) bool {
 				reg, err := regexp.Compile(matchPath)
 
 				if err != nil {
+					fmt.Println("err", err)
 					continue
 				}
 
@@ -234,7 +176,7 @@ func CheckPermissions(user User, path string, method string) bool {
 
 func InMethodArr(arr []string, str string) bool {
 	for i := 0; i < len(arr); i++ {
-		if arr[i] == str {
+		if strings.EqualFold(arr[i], str) {
 			return true
 		}
 	}

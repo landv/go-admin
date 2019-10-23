@@ -1,14 +1,14 @@
-// Copyright 2018 cg33.  All rights reserved.
-// Use of this source code is governed by a MIT style
+// Copyright 2019 GoAdmin Core Team.  All rights reserved.
+// Use of this source code is governed by a Apache-2.0 style
 // license that can be found in the LICENSE file.
 
 package engine
 
 import (
-	"github.com/chenhg5/go-admin/adapter"
-	"github.com/chenhg5/go-admin/modules/config"
-	"github.com/chenhg5/go-admin/plugins"
-	"github.com/chenhg5/go-admin/template/types"
+	"github.com/GoAdminGroup/go-admin/adapter"
+	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/plugins"
+	"github.com/GoAdminGroup/go-admin/template/types"
 )
 
 // Engine is the core component of goAdmin. It has two attributes.
@@ -50,6 +50,12 @@ func (eng *Engine) AddPlugins(plugs ...plugins.Plugin) *Engine {
 // AddConfig set the global config.
 func (eng *Engine) AddConfig(cfg config.Config) *Engine {
 	config.Set(cfg)
+	return eng
+}
+
+// AddConfigFromJson set the global config from json file.
+func (eng *Engine) AddConfigFromJson(path string) *Engine {
+	config.ReadFromJson(path)
 	return eng
 }
 

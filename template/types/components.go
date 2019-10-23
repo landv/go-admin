@@ -1,23 +1,26 @@
-// Copyright 2018 cg33.  All rights reserved.
-// Use of this source code is governed by a MIT style
+// Copyright 2019 GoAdmin Core Team.  All rights reserved.
+// Use of this source code is governed by a Apache-2.0 style
 // license that can be found in the LICENSE file.
 
 package types
 
 import (
-	"github.com/chenhg5/go-admin/modules/menu"
+	"github.com/GoAdminGroup/go-admin/modules/menu"
 	"html/template"
 )
 
 type FormAttribute interface {
 	SetHeader(value template.HTML) FormAttribute
-	SetContent(value []Form) FormAttribute
+	SetContent(value []FormField) FormAttribute
+	SetTabContents(value [][]FormField) FormAttribute
+	SetTabHeaders(value []string) FormAttribute
 	SetFooter(value template.HTML) FormAttribute
 	SetPrefix(value string) FormAttribute
 	SetUrl(value string) FormAttribute
+	SetPrimaryKey(value string) FormAttribute
 	SetInfoUrl(value string) FormAttribute
 	SetMethod(value string) FormAttribute
-	SetTitle(value string) FormAttribute
+	SetTitle(value template.HTML) FormAttribute
 	SetToken(value string) FormAttribute
 	GetContent() template.HTML
 }
@@ -28,6 +31,7 @@ type BoxAttribute interface {
 	SetFooter(value template.HTML) BoxAttribute
 	SetTitle(value template.HTML) BoxAttribute
 	WithHeadBorder(has bool) BoxAttribute
+	SetHeadColor(value string) BoxAttribute
 	SetTheme(value string) BoxAttribute
 	GetContent() template.HTML
 }
@@ -35,6 +39,7 @@ type BoxAttribute interface {
 type ColAttribute interface {
 	SetSize(value map[string]string) ColAttribute
 	SetContent(value template.HTML) ColAttribute
+	AddContent(value template.HTML) ColAttribute
 	GetContent() template.HTML
 }
 
@@ -46,19 +51,22 @@ type ImgAttribute interface {
 }
 
 type SmallBoxAttribute interface {
-	SetTitle(value string) SmallBoxAttribute
-	SetValue(value string) SmallBoxAttribute
+	SetTitle(value template.HTML) SmallBoxAttribute
+	SetValue(value template.HTML) SmallBoxAttribute
+	SetColor(value template.HTML) SmallBoxAttribute
+	SetIcon(value template.HTML) SmallBoxAttribute
 	SetUrl(value string) SmallBoxAttribute
 	GetContent() template.HTML
 }
 
 type LabelAttribute interface {
-	SetContent(value string) LabelAttribute
+	SetContent(value template.HTML) LabelAttribute
 	GetContent() template.HTML
 }
 
 type RowAttribute interface {
 	SetContent(value template.HTML) RowAttribute
+	AddContent(value template.HTML) RowAttribute
 	GetContent() template.HTML
 }
 
@@ -66,6 +74,7 @@ type TableAttribute interface {
 	SetThead(value []map[string]string) TableAttribute
 	SetInfoList(value []map[string]template.HTML) TableAttribute
 	SetType(value string) TableAttribute
+	SetMinWidth(value int) TableAttribute
 	GetContent() template.HTML
 }
 
@@ -76,8 +85,12 @@ type DataTableAttribute interface {
 	SetEditUrl(value string) DataTableAttribute
 	SetDeleteUrl(value string) DataTableAttribute
 	SetNewUrl(value string) DataTableAttribute
+	SetPrimaryKey(value string) DataTableAttribute
+	SetAction(action template.HTML) DataTableAttribute
+	SetIsTab(value bool) DataTableAttribute
 	SetFilterUrl(value string) DataTableAttribute
 	SetInfoUrl(value string) DataTableAttribute
+	SetExportUrl(value string) DataTableAttribute
 	SetFilters(value []map[string]string) DataTableAttribute
 	GetContent() template.HTML
 }
@@ -106,17 +119,17 @@ type PaginatorAttribute interface {
 }
 
 type InfoBoxAttribute interface {
-	SetIcon(value string) InfoBoxAttribute
-	SetText(value string) InfoBoxAttribute
+	SetIcon(value template.HTML) InfoBoxAttribute
+	SetText(value template.HTML) InfoBoxAttribute
 	SetNumber(value template.HTML) InfoBoxAttribute
-	SetContent(value string) InfoBoxAttribute
-	SetColor(value string) InfoBoxAttribute
+	SetContent(value template.HTML) InfoBoxAttribute
+	SetColor(value template.HTML) InfoBoxAttribute
 	GetContent() template.HTML
 }
 
 type ProgressGroupAttribute interface {
-	SetTitle(value string) ProgressGroupAttribute
-	SetColor(value string) ProgressGroupAttribute
+	SetTitle(value template.HTML) ProgressGroupAttribute
+	SetColor(value template.HTML) ProgressGroupAttribute
 	SetPercent(value int) ProgressGroupAttribute
 	SetDenominator(value int) ProgressGroupAttribute
 	SetMolecular(value int) ProgressGroupAttribute
@@ -127,7 +140,7 @@ type ProgressAttribute interface{}
 
 type LineChartAttribute interface {
 	SetID(value string) LineChartAttribute
-	SetTitle(value string) LineChartAttribute
+	SetTitle(value template.HTML) LineChartAttribute
 	SetHeight(value int) LineChartAttribute
 	SetData(value string) LineChartAttribute
 	GetContent() template.HTML
@@ -135,7 +148,7 @@ type LineChartAttribute interface {
 
 type BarChartAttribute interface {
 	SetID(value string) BarChartAttribute
-	SetTitle(value string) BarChartAttribute
+	SetTitle(value template.HTML) BarChartAttribute
 	SetWidth(value int) BarChartAttribute
 	SetData(value string) BarChartAttribute
 	GetContent() template.HTML
@@ -144,7 +157,7 @@ type BarChartAttribute interface {
 type PieChartAttribute interface {
 	SetID(value string) PieChartAttribute
 	SetData(value string) PieChartAttribute
-	SetTitle(value string) PieChartAttribute
+	SetTitle(value template.HTML) PieChartAttribute
 	SetHeight(value int) PieChartAttribute
 	GetContent() template.HTML
 }
@@ -155,17 +168,17 @@ type ChartLegendAttribute interface {
 }
 
 type DescriptionAttribute interface {
-	SetNumber(value string) DescriptionAttribute
-	SetTitle(value string) DescriptionAttribute
+	SetNumber(value template.HTML) DescriptionAttribute
+	SetTitle(value template.HTML) DescriptionAttribute
 	SetArrow(value string) DescriptionAttribute
-	SetPercent(value string) DescriptionAttribute
+	SetPercent(value template.HTML) DescriptionAttribute
 	SetBorder(value string) DescriptionAttribute
-	SetColor(value string) DescriptionAttribute
+	SetColor(value template.HTML) DescriptionAttribute
 	GetContent() template.HTML
 }
 
 type AreaChartAttribute interface {
-	SetTitle(value string) AreaChartAttribute
+	SetTitle(value template.HTML) AreaChartAttribute
 	SetID(value string) AreaChartAttribute
 	SetData(value string) AreaChartAttribute
 	SetHeight(value int) AreaChartAttribute
@@ -191,8 +204,8 @@ type AlertAttribute interface {
 
 type PopupAttribute interface {
 	SetID(value string) PopupAttribute
-	SetTitle(value string) PopupAttribute
-	SetFooter(value string) PopupAttribute
+	SetTitle(value template.HTML) PopupAttribute
+	SetFooter(value template.HTML) PopupAttribute
 	SetBody(value template.HTML) PopupAttribute
 	SetSize(value string) PopupAttribute
 	GetContent() template.HTML

@@ -1,18 +1,18 @@
 package components
 
 import (
-	"github.com/chenhg5/go-admin/template/types"
+	"github.com/GoAdminGroup/go-admin/template/types"
 	"html/template"
 )
 
 type LabelAttribute struct {
 	Name    string
 	Color   string
-	Content string
+	Content template.HTML
 	types.Attribute
 }
 
-func (compo *LabelAttribute) SetContent(value string) types.LabelAttribute {
+func (compo *LabelAttribute) SetContent(value template.HTML) types.LabelAttribute {
 	compo.Content = value
 	return compo
 }

@@ -1,101 +1,31 @@
-// Copyright 2018 cg33.  All rights reserved.
-// Use of this source code is governed by a MIT style
+// Copyright 2019 GoAdmin Core Team.  All rights reserved.
+// Use of this source code is governed by a Apache-2.0 style
 // license that can be found in the LICENSE file.
 
 package auth
 
 import (
-	"github.com/chenhg5/go-admin/context"
-	"github.com/chenhg5/go-admin/modules/config"
-	"github.com/chenhg5/go-admin/modules/db"
-	"github.com/chenhg5/go-admin/modules/db/dialect"
-	"github.com/chenhg5/go-admin/plugins/admin/modules"
+	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
 	"golang.org/x/crypto/bcrypt"
-	"strconv"
-	"strings"
 )
 
-func Auth(ctx *context.Context) User {
-	return ctx.User().(User)
+func Auth(ctx *context.Context) models.UserModel {
+	return ctx.User().(models.UserModel)
 }
 
-func Check(password string, username string) (user User, ok bool) {
+func Check(password string, username string) (user models.UserModel, ok bool) {
 
-	admin, _ := db.Table("goadmin_users").Where("username", "=", username).First()
+	user = models.User().FindByUserName(username)
 
-	if admin == nil {
+	if user.IsEmpty() {
 		ok = false
 	} else {
-		if ComparePassword(password, admin["password"].(string)) {
+		if comparePassword(password, user.Password) {
 			ok = true
-
-			roleModel, _ := db.Table("goadmin_role_users").
-				LeftJoin("goadmin_roles", "goadmin_roles.id", "=", "goadmin_role_users.role_id").
-				Where("user_id", "=", admin["id"]).
-				Select("goadmin_roles.id", "goadmin_roles.name", "goadmin_roles.slug").
-				First()
-
-			user.ID = strconv.FormatInt(admin["id"].(int64), 10)
-			user.Level = roleModel["slug"].(string)
-			user.LevelName = roleModel["name"].(string)
-			user.Name = admin["name"].(string)
-			user.CreateAt = admin["created_at"].(string)
-
-			if admin["avatar"].(string) == "" || config.Get().STORE.PREFIX == "" {
-				user.Avatar = ""
-			} else {
-				user.Avatar = "/" + config.Get().STORE.PREFIX + "/" + admin["avatar"].(string)
-			}
-
-			// TODO: 支持多角色
-			permissionModel := GetPermissions(roleModel["id"])
-			var permissions []Permission
-			for i := 0; i < len(permissionModel); i++ {
-
-				var methodArr []string
-
-				if permissionModel[i]["http_method"].(string) != "" {
-					methodArr = strings.Split(permissionModel[i]["http_method"].(string), ",")
-				} else {
-					methodArr = []string{""}
-				}
-				permissions = append(permissions, Permission{
-					methodArr,
-					strings.Split(permissionModel[i]["http_path"].(string), "\n"),
-				})
-			}
-
-			user.Permissions = permissions
-
-			menuIdsModel, _ := db.Table("goadmin_role_menu").
-				LeftJoin("goadmin_menu", "goadmin_menu.id", "=", "goadmin_role_menu.menu_id").
-				Where("goadmin_role_menu.role_id", "=", roleModel["id"]).
-				Select("menu_id", "parent_id").
-				All()
-
-			var menuIds []int64
-
-			for _, mid := range menuIdsModel {
-				if parentId, ok := mid["parent_id"].(int64); ok && parentId != 0 {
-					for _, mid2 := range menuIdsModel {
-						if mid2["menu_id"].(int64) == mid["parent_id"].(int64) {
-							menuIds = append(menuIds, mid["menu_id"].(int64))
-							break
-						}
-					}
-				} else {
-					menuIds = append(menuIds, mid["menu_id"].(int64))
-				}
-			}
-
-			user.Menus = menuIds
-
-			newPwd := EncodePassword([]byte(password))
-			_, _ = db.Table("goadmin_users").
-				Where("id", "=", user.ID).Update(dialect.H{
-				"password": newPwd,
-			})
-
+			user = user.WithRoles().WithPermissions().WithMenus()
+			user.UpdatePwd(EncodePassword([]byte(password)))
 		} else {
 			ok = false
 		}
@@ -103,7 +33,7 @@ func Check(password string, username string) (user User, ok bool) {
 	return
 }
 
-func ComparePassword(comPwd, pwdHash string) bool {
+func comparePassword(comPwd, pwdHash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(pwdHash), []byte(comPwd))
 	if err != nil {
 		return false
@@ -120,8 +50,8 @@ func EncodePassword(pwd []byte) string {
 	return string(hash[:])
 }
 
-func SetCookie(ctx *context.Context, user User) bool {
-	InitSession(ctx).Set("user_id", user.ID)
+func SetCookie(ctx *context.Context, user models.UserModel) bool {
+	InitSession(ctx).Set("user_id", user.Id)
 	return true
 }
 
@@ -135,7 +65,7 @@ type CSRFToken []string
 var TokenHelper = new(CSRFToken)
 
 func (token *CSRFToken) AddToken() string {
-	tokenStr := modules.Uuid(35)
+	tokenStr := modules.Uuid()
 	if len(*token) == 1 && (*token)[0] == "" {
 		(*token)[0] = tokenStr
 	} else {
@@ -144,9 +74,9 @@ func (token *CSRFToken) AddToken() string {
 	return tokenStr
 }
 
-func (token *CSRFToken) CheckToken(tocheck string) bool {
+func (token *CSRFToken) CheckToken(toCheckToken string) bool {
 	for i := 0; i < len(*token); i++ {
-		if (*token)[i] == tocheck {
+		if (*token)[i] == toCheckToken {
 			*token = append((*token)[0:i], (*token)[i:len(*token)]...)
 			return true
 		}

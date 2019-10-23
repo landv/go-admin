@@ -1,17 +1,17 @@
 package admin
 
 import (
-	"github.com/chenhg5/go-admin/context"
-	"github.com/chenhg5/go-admin/modules/config"
-	"github.com/chenhg5/go-admin/modules/db"
-	"github.com/chenhg5/go-admin/plugins"
-	"github.com/chenhg5/go-admin/plugins/admin/controller"
-	"github.com/chenhg5/go-admin/plugins/admin/models"
+	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/modules/db"
+	"github.com/GoAdminGroup/go-admin/plugins"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/controller"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
 )
 
 type Admin struct {
 	app      *context.App
-	tableCfg map[string]models.TableGenerator
+	tableCfg table.GeneratorList
 }
 
 func (admin *Admin) InitPlugin() {
@@ -19,41 +19,44 @@ func (admin *Admin) InitPlugin() {
 	cfg := config.Get()
 
 	// Init database
-	for _, databaseCfg := range cfg.DATABASE {
-		db.GetConnectionByDriver(databaseCfg.DRIVER).InitDB(map[string]config.Database{
-			"default": databaseCfg,
-		})
+	for driver, databaseCfg := range cfg.Databases.GroupByDriver() {
+		db.GetConnectionByDriver(driver).InitDB(databaseCfg)
 	}
 
 	// Init router
-	App.app = InitRouter("/" + cfg.PREFIX)
+	App.app = InitRouter(cfg.Prefix())
 
-	models.SetGenerators(map[string]models.TableGenerator{
-		"manager":    models.GetManagerTable,
-		"permission": models.GetPermissionTable,
-		"roles":      models.GetRolesTable,
-		"op":         models.GetOpTable,
-		"menu":       models.GetMenuTable,
+	table.SetGenerators(table.GeneratorList{
+		"manager":    table.GetManagerTable,
+		"permission": table.GetPermissionTable,
+		"roles":      table.GetRolesTable,
+		"op":         table.GetOpTable,
+		"menu":       table.GetMenuTable,
 	})
-	models.SetGenerators(admin.tableCfg)
-	models.InitTableList()
+	table.SetGenerators(admin.tableCfg)
+	table.InitTableList()
 
-	cfg.PREFIX = "/" + cfg.PREFIX
 	controller.SetConfig(cfg)
-
 }
 
-var App = new(Admin)
+var App = &Admin{
+	tableCfg: make(table.GeneratorList),
+}
 
-func NewAdmin(tableCfg map[string]models.TableGenerator) *Admin {
+func NewAdmin(tableCfg table.GeneratorList) *Admin {
 	App.tableCfg = tableCfg
 	return App
+}
+
+func (admin *Admin) AddGenerator(key string, g table.Generator) *Admin {
+	admin.tableCfg.Add(key, g)
+	return admin
 }
 
 func (admin *Admin) GetRequest() []context.Path {
 	return admin.app.Requests
 }
 
-func (admin *Admin) GetHandler(url, method string) context.Handler {
+func (admin *Admin) GetHandler(url, method string) context.Handlers {
 	return plugins.GetHandler(url, method, admin.app)
 }

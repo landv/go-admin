@@ -1,21 +1,24 @@
 package components
 
 import (
-	"github.com/chenhg5/go-admin/template/types"
+	"github.com/GoAdminGroup/go-admin/template/types"
 	"html/template"
 )
 
 type FormAttribute struct {
-	Name      string
-	Header    template.HTML
-	Content   []types.Form
-	Footer    template.HTML
-	Url       string
-	Method    string
-	InfoUrl   string
-	CSRFToken string
-	Title     string
-	Prefix    string
+	Name        string
+	Header      template.HTML
+	Content     []types.FormField
+	TabContents [][]types.FormField
+	TabHeaders  []string
+	Footer      template.HTML
+	Url         string
+	Method      string
+	PrimaryKey  string
+	InfoUrl     string
+	CSRFToken   string
+	Title       template.HTML
+	Prefix      string
 	types.Attribute
 }
 
@@ -24,8 +27,23 @@ func (compo *FormAttribute) SetHeader(value template.HTML) types.FormAttribute {
 	return compo
 }
 
-func (compo *FormAttribute) SetContent(value []types.Form) types.FormAttribute {
+func (compo *FormAttribute) SetPrimaryKey(value string) types.FormAttribute {
+	compo.PrimaryKey = value
+	return compo
+}
+
+func (compo *FormAttribute) SetContent(value []types.FormField) types.FormAttribute {
 	compo.Content = value
+	return compo
+}
+
+func (compo *FormAttribute) SetTabContents(value [][]types.FormField) types.FormAttribute {
+	compo.TabContents = value
+	return compo
+}
+
+func (compo *FormAttribute) SetTabHeaders(value []string) types.FormAttribute {
+	compo.TabHeaders = value
 	return compo
 }
 
@@ -54,7 +72,7 @@ func (compo *FormAttribute) SetMethod(value string) types.FormAttribute {
 	return compo
 }
 
-func (compo *FormAttribute) SetTitle(value string) types.FormAttribute {
+func (compo *FormAttribute) SetTitle(value template.HTML) types.FormAttribute {
 	compo.Title = value
 	return compo
 }
@@ -70,5 +88,5 @@ func (compo *FormAttribute) GetContent() template.HTML {
 		"form/selectbox", "form/text", "form/radio",
 		"form/password", "form/select", "form/singleselect",
 		"form/richtext", "form/iconpicker", "form/datetime", "form/number",
-		"form/email", "form/url", "form/ip", "form/color", "form/currency")
+		"form/email", "form/url", "form/ip", "form/color", "form/currency", "form_components")
 }

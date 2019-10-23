@@ -1,17 +1,18 @@
 package example
 
 import (
-	"github.com/chenhg5/go-admin/context"
-	"github.com/chenhg5/go-admin/modules/page"
-	template2 "github.com/chenhg5/go-admin/template"
-	"github.com/chenhg5/go-admin/template/types"
+	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/auth"
+	"github.com/GoAdminGroup/go-admin/modules/page"
+	template2 "github.com/GoAdminGroup/go-admin/template"
+	"github.com/GoAdminGroup/go-admin/template/types"
 	"html/template"
 )
 
 func TestHandler(ctx *context.Context) {
-	page.SetPageContent(ctx, func() types.Panel {
+	page.SetPageContent(ctx, auth.Auth(ctx), func(ctx interface{}) (types.Panel, error) {
 
-		components := template2.Get(Config.THEME)
+		components := template2.Get(config.Theme)
 		colComp := components.Col()
 
 		/**************************
@@ -284,6 +285,6 @@ func TestHandler(ctx *context.Context) {
 			Content:     template.HTML(row1) + template.HTML(row2) + template.HTML(row3) + template.HTML(row4),
 			Title:       "Dashboard",
 			Description: "this is a example",
-		}
+		}, nil
 	})
 }

@@ -1,75 +1,105 @@
-// Copyright 2018 cg33.  All rights reserved.
-// Use of this source code is governed by a MIT style
+// Copyright 2019 GoAdmin Core Team.  All rights reserved.
+// Use of this source code is governed by a Apache-2.0 style
 // license that can be found in the LICENSE file.
 
 package logger
 
 import (
+	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
+	"github.com/mgutz/ansi"
 	"github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"os"
+	"strconv"
 )
 
 var (
-	InfoLogger   = logrus.New()
-	ErrorLogger  = logrus.New()
-	AccessLogger = logrus.New()
+	manager = map[string]*logrus.Logger{
+		"info":   logrus.New(),
+		"error":  logrus.New(),
+		"access": logrus.New(),
+	}
+	sqlLogOpen   = false
+	accessLogOff = false
+	infoLogOff   = false
+	errorLogOff  = false
 )
 
 func init() {
-	InfoLogger.Out = os.Stdout
-	ErrorLogger.Out = os.Stdout
-	AccessLogger.Out = os.Stdout
-}
-
-func SetInfoLogger(path string, debug bool) {
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	if debug {
-		InfoLogger.Out = io.MultiWriter(file, os.Stdout)
-	} else {
-		InfoLogger.Out = file
+	for _, l := range manager {
+		l.Out = os.Stdout
 	}
 }
 
-func SetErrorLogger(path string, debug bool) {
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalln(err)
+func SetInfoLogger(path string, debug, isInfoLogOn bool) {
+	if path != "" {
+		SetLogger("info", path, debug)
 	}
+	infoLogOff = isInfoLogOn
+}
 
+func SetErrorLogger(path string, debug, isErrorLogOn bool) {
+	if path != "" {
+		SetLogger("error", path, debug)
+	}
+	errorLogOff = isErrorLogOn
+}
+
+func SetAccessLogger(path string, debug, isAccessLogOn bool) {
+	if path != "" {
+		SetLogger("access", path, debug)
+	}
+	accessLogOff = isAccessLogOn
+}
+
+func SetLogger(kind, path string, debug bool) {
 	if debug {
-		ErrorLogger.Out = io.MultiWriter(file, os.Stdout)
+		manager[kind].Out = io.MultiWriter(openFile(path), os.Stdout)
 	} else {
-		ErrorLogger.Out = file
+		manager[kind].Out = openFile(path)
 	}
 }
 
-func SetAccessLogger(path string, debug bool) {
+func openFile(path string) *os.File {
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatalln(err)
+		panic(err)
 	}
+	return file
+}
 
-	if debug {
-		AccessLogger.Out = io.MultiWriter(file, os.Stdout)
-	} else {
-		AccessLogger.Out = file
-	}
+func OpenSqlLog() {
+	sqlLogOpen = true
 }
 
 func Error(err ...interface{}) {
-	ErrorLogger.Errorln(err...)
+	if !errorLogOff {
+		manager["error"].Errorln(err...)
+	}
 }
 
 func Info(info ...interface{}) {
-	InfoLogger.Infoln(info...)
+	if !infoLogOff {
+		manager["info"].Infoln(info...)
+	}
 }
 
 func Warn(info ...interface{}) {
-	InfoLogger.Warnln(info...)
+	manager["info"].Warnln(info...)
+}
+
+func Access(ctx *context.Context) {
+	if !accessLogOff {
+		manager["access"].Println("["+constant.Title+"]",
+			ansi.Color(" "+strconv.Itoa(ctx.Response.StatusCode)+" ", "white:blue"),
+			ansi.Color(" "+string(ctx.Method()[:])+"   ", "white:blue+h"),
+			ctx.Path())
+	}
+}
+
+func LogSql(statement string, args []interface{}) {
+	if sqlLogOpen && statement != "" {
+		manager["info"].Infoln("["+constant.Title+"]", "statement", statement, "args", args)
+	}
 }

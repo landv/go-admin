@@ -1,46 +1,53 @@
-// Copyright 2018 cg33.  All rights reserved.
-// Use of this source code is governed by a MIT style
+// Copyright 2019 GoAdmin Core Team.  All rights reserved.
+// Use of this source code is governed by a Apache-2.0 style
 // license that can be found in the LICENSE file.
 
 package page
 
 import (
 	"bytes"
-	"github.com/chenhg5/go-admin/context"
-	"github.com/chenhg5/go-admin/modules/auth"
-	"github.com/chenhg5/go-admin/modules/config"
-	"github.com/chenhg5/go-admin/modules/menu"
-	"github.com/chenhg5/go-admin/template"
-	"github.com/chenhg5/go-admin/template/types"
-	"strings"
+	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/modules/language"
+	"github.com/GoAdminGroup/go-admin/modules/logger"
+	"github.com/GoAdminGroup/go-admin/modules/menu"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
+	"github.com/GoAdminGroup/go-admin/template"
+	"github.com/GoAdminGroup/go-admin/template/types"
+	template2 "html/template"
 )
 
 // SetPageContent set and return the panel of page content.
-func SetPageContent(ctx *context.Context, c func() types.Panel) {
-	user := auth.Auth(ctx)
+func SetPageContent(ctx *context.Context, user models.UserModel, c func(ctx interface{}) (types.Panel, error)) {
 
-	panel := c()
+	panel, err := c(ctx)
 
 	globalConfig := config.Get()
 
-	tmpl, tmplName := template.Get(globalConfig.THEME).GetTemplate(ctx.Headers("X-PJAX") == "true")
+	if err != nil {
+		logger.Error("SetPageContent", err)
+		alert := template.Get(globalConfig.Theme).
+			Alert().
+			SetTitle(template2.HTML(`<i class="icon fa fa-warning"></i> ` + language.Get("error") + `!`)).
+			SetTheme("warning").SetContent(template2.HTML(err.Error())).GetContent()
+		panel = types.Panel{
+			Content:     alert,
+			Description: language.Get("error"),
+			Title:       language.Get("error"),
+		}
+	}
+
+	tmpl, tmplName := template.Get(globalConfig.Theme).GetTemplate(ctx.Headers(constant.PjaxHeader) == "true")
 
 	ctx.AddHeader("Content-Type", "text/html; charset=utf-8")
 
 	buf := new(bytes.Buffer)
-	_ = tmpl.ExecuteTemplate(buf, tmplName, types.Page{
-		User: user,
-		Menu: *(menu.GetGlobalMenu(user).SetActiveClass(strings.Replace(ctx.Path(), "/"+config.Get().PREFIX, "", 1))),
-		System: types.SystemInfo{
-			Version: "0.0.1",
-		},
-		Panel:         panel,
-		AssertRootUrl: "/" + globalConfig.PREFIX,
-		Title:         globalConfig.TITLE,
-		Logo:          globalConfig.LOGO,
-		MiniLogo:      globalConfig.MINILOGO,
-		ColorScheme:   globalConfig.COLORSCHEME,
-	})
+	err = tmpl.ExecuteTemplate(buf, tmplName, types.NewPage(user,
+		*(menu.GetGlobalMenu(user).SetActiveClass(globalConfig.UrlRemovePrefix(ctx.Path()))),
+		panel, globalConfig))
+	if err != nil {
+		logger.Error("SetPageContent", err)
+	}
 	ctx.WriteString(buf.String())
-
 }

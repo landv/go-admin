@@ -1,7 +1,7 @@
 package components
 
 import (
-	"github.com/chenhg5/go-admin/template/types"
+	"github.com/GoAdminGroup/go-admin/template/types"
 	"html/template"
 )
 
@@ -14,6 +14,11 @@ type ColAttribute struct {
 
 func (compo *ColAttribute) SetContent(value template.HTML) types.ColAttribute {
 	compo.Content = value
+	return compo
+}
+
+func (compo *ColAttribute) AddContent(value template.HTML) types.ColAttribute {
+	compo.Content += value
 	return compo
 }
 

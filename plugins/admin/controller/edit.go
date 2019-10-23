@@ -1,143 +1,108 @@
 package controller
 
 import (
-	"github.com/chenhg5/go-admin/context"
-	"github.com/chenhg5/go-admin/modules/auth"
-	"github.com/chenhg5/go-admin/modules/menu"
-	"github.com/chenhg5/go-admin/plugins/admin/models"
-	"github.com/chenhg5/go-admin/plugins/admin/modules/file"
-	"github.com/chenhg5/go-admin/template"
-	"github.com/chenhg5/go-admin/template/types"
+	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/auth"
+	"github.com/GoAdminGroup/go-admin/modules/file"
+	"github.com/GoAdminGroup/go-admin/modules/language"
+	"github.com/GoAdminGroup/go-admin/modules/menu"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/guard"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
+	"github.com/GoAdminGroup/go-admin/template"
+	"github.com/GoAdminGroup/go-admin/template/types"
+	template2 "html/template"
 	"net/http"
-	"regexp"
-	"strings"
 )
 
-// 显示表单
 func ShowForm(ctx *context.Context) {
+	param := guard.GetShowFormParam(ctx)
+	showForm(ctx, "", param.Panel, param.Id, param.GetUrl(), param.GetInfoUrl())
+}
 
-	prefix := ctx.Query("prefix")
-	panel := models.TableList[prefix]
-	if !panel.GetEditable() {
-		ctx.Html(http.StatusNotFound, "page not found")
-		return
+func showForm(ctx *context.Context, alert template2.HTML, panel table.Table, id string, url, infoUrl string) {
+
+	formData, groupFormData, groupHeaders, title, description, err := panel.GetDataFromDatabaseWithId(id)
+
+	if err != nil && alert == "" {
+		alert = aAlert().SetTitle(template2.HTML(`<i class="icon fa fa-warning"></i> ` + language.Get("error") + `!`)).
+			SetTheme("warning").
+			SetContent(template2.HTML(err.Error())).
+			GetContent()
 	}
-
-	formData, title, description := panel.GetDataFromDatabaseWithId(ctx.Query("id"))
-
-	params := models.GetParam(ctx.Request.URL.Query())
 
 	user := auth.Auth(ctx)
 
-	tmpl, tmplName := template.Get(Config.THEME).GetTemplate(ctx.Headers("X-PJAX") == "true")
-	buf := template.Excecute(tmpl, tmplName, user, types.Panel{
-		Content: template.Get(Config.THEME).Form().
+	tmpl, tmplName := aTemplate().GetTemplate(isPjax(ctx))
+	buf := template.Execute(tmpl, tmplName, user, types.Panel{
+		Content: alert + aForm().
 			SetContent(formData).
-			SetPrefix(Config.PREFIX).
-			SetUrl(Config.PREFIX + "/edit/" + prefix).
+			SetTabContents(groupFormData).
+			SetTabHeaders(groupHeaders).
+			SetPrefix(config.PrefixFixSlash()).
+			SetPrimaryKey(panel.GetPrimaryKey().Name).
+			SetUrl(url).
 			SetToken(auth.TokenHelper.AddToken()).
-			SetInfoUrl(Config.PREFIX + "/info/" + prefix + regexp.MustCompile(`&id=[0-9]+`).ReplaceAllString(params.GetRouteParamStr(), "")).
+			SetInfoUrl(infoUrl).
 			SetHeader(panel.GetForm().HeaderHtml).
 			SetFooter(panel.GetForm().FooterHtml).
 			GetContent(),
 		Description: description,
 		Title:       title,
-	}, Config, menu.GetGlobalMenu(user).SetActiveClass(strings.Replace(ctx.Path(), Config.PREFIX, "", 1)))
+	}, config, menu.GetGlobalMenu(user).SetActiveClass(config.UrlRemovePrefix(ctx.Path())))
+
 	ctx.Html(http.StatusOK, buf.String())
 }
 
-// 编辑数据
 func EditForm(ctx *context.Context) {
-	prefix := ctx.Query("prefix")
-	panel := models.TableList[prefix]
-	if !panel.GetEditable() {
-		ctx.Html(http.StatusNotFound, "page not found")
-		return
-	}
-	token := ctx.FormValue("_t")
 
-	if !auth.TokenHelper.CheckToken(token) {
-		ctx.Json(http.StatusBadRequest, map[string]interface{}{
-			"code": 400,
-			"msg":  "编辑失败",
-		})
+	param := guard.GetEditFormParam(ctx)
+
+	if param.HasAlert() {
+		showForm(ctx, param.Alert, param.Panel, param.Id, param.GetUrl(), param.GetInfoUrl())
 		return
 	}
 
-	form := ctx.Request.MultipartForm
-
-	menu.GlobalMenu.SetActiveClass(strings.Replace(ctx.Path(), Config.PREFIX, "", 1))
-
-	// 处理上传文件，目前仅仅支持传本地
-	if len((*form).File) > 0 {
-		_, _ = file.GetFileEngine("local").Upload(form)
-	}
-
-	if prefix == "manager" { // 管理员管理编辑
-		EditManager((*form).Value)
-	} else if prefix == "roles" { // 管理员角色管理编辑
-		EditRole((*form).Value)
-	} else {
-		val := (*form).Value
-		for _, f := range panel.GetForm().FormList {
-			if f.Editable {
-				continue
-			}
-			if len(val[f.Field]) > 0 && f.Field != "id" {
-				ctx.Json(http.StatusBadRequest, map[string]interface{}{
-					"code": 400,
-					"msg":  "字段[" + f.Field + "]不可编辑",
-				})
-				return
-			}
+	// process uploading files, only support local storage for now.
+	if len(param.MultiForm.File) > 0 {
+		err := file.GetFileEngine(config.FileUploadEngine.Name).Upload(param.MultiForm)
+		if err != nil {
+			alert := aAlert().SetTitle(template2.HTML(`<i class="icon fa fa-warning"></i> ` + language.Get("error") + `!`)).
+				SetTheme("warning").
+				SetContent(template2.HTML(err.Error())).
+				GetContent()
+			showForm(ctx, alert, param.Panel, param.Id, param.GetUrl(), param.GetInfoUrl())
+			return
 		}
-		panel.UpdateDataFromDatabase((*form).Value)
 	}
 
-	models.RefreshTableList()
-
-	previous := ctx.FormValue("_previous_")
-	prevUrlArr := strings.Split(previous, "?")
-	params := models.GetParamFromUrl(previous)
-
-	previous = Config.PREFIX + "/info/" + prefix + regexp.MustCompile(`&id=[0-9]+`).ReplaceAllString(params.GetRouteParamStr(), "")
-	editUrl := Config.PREFIX + "/info/" + prefix + "/edit" + params.GetRouteParamStr()
-	newUrl := Config.PREFIX + "/info/" + prefix + "/new" + params.GetRouteParamStr()
-	deleteUrl := Config.PREFIX + "/delete/" + prefix
-
-	panelInfo := panel.GetDataFromDatabase(prevUrlArr[0], params)
-
-	dataTable := template.Get(Config.THEME).
-		DataTable().
-		SetInfoList(panelInfo.InfoList).
-		SetThead(panelInfo.Thead).
-		SetNewUrl(newUrl)
-
-	if panelInfo.Editable {
-		dataTable.SetEditUrl(editUrl)
-	}
-	if panelInfo.Deletable {
-		dataTable.SetDeleteUrl(deleteUrl)
+	if param.IsManage() { // manager edit
+		editManager(param.Value())
+	} else if param.IsRole() { // role edit
+		editRole(param.Value())
+	} else {
+		err := param.Panel.UpdateDataFromDatabase(param.Value())
+		if err != nil {
+			alert := aAlert().SetTitle(template2.HTML(`<i class="icon fa fa-warning"></i> ` + language.Get("error") + `!`)).
+				SetTheme("warning").
+				SetContent(template2.HTML(err.Error())).
+				GetContent()
+			showForm(ctx, alert, param.Panel, param.Id, param.GetUrl(), param.GetInfoUrl())
+			return
+		}
 	}
 
-	table := dataTable.GetContent()
+	table.RefreshTableList()
 
-	box := template.Get(Config.THEME).Box().
-		SetBody(table).
-		SetHeader(dataTable.GetDataTableHeader() + panel.GetInfo().HeaderHtml).
-		WithHeadBorder(false).
-		SetFooter(panel.GetInfo().FooterHtml + panelInfo.Paginator.GetContent()).
-		GetContent()
+	editUrl := modules.AorB(param.Panel.GetEditable(), param.GetEditUrl(), "")
+	deleteUrl := modules.AorB(param.Panel.GetDeletable(), param.GetDeleteUrl(), "")
+	exportUrl := modules.AorB(param.Panel.GetExportable(), param.GetExportUrl(), "")
+	newUrl := modules.AorB(param.Panel.GetCanAdd(), param.GetNewUrl(), "")
+	infoUrl := param.GetInfoUrl()
 
-	user := auth.Auth(ctx)
-
-	tmpl, tmplName := template.Get(Config.THEME).GetTemplate(true)
-	buf := template.Excecute(tmpl, tmplName, user, types.Panel{
-		Content:     box,
-		Description: panelInfo.Description,
-		Title:       panelInfo.Title,
-	}, Config, menu.GetGlobalMenu(user).SetActiveClass(strings.Replace(previous, Config.PREFIX, "", 1)))
+	buf := showTable(ctx, param.Panel, param.Path, param.Param, exportUrl, newUrl, deleteUrl, infoUrl, editUrl)
 
 	ctx.Html(http.StatusOK, buf.String())
-	ctx.AddHeader("X-PJAX-URL", previous)
+	ctx.AddHeader(constant.PjaxUrlHeader, param.PreviousPath)
 }

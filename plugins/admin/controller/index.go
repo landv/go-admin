@@ -1,17 +1,18 @@
 package controller
 
 import (
-	"github.com/chenhg5/go-admin/context"
-	"github.com/chenhg5/go-admin/modules/page"
-	template2 "github.com/chenhg5/go-admin/template"
-	"github.com/chenhg5/go-admin/template/types"
+	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/auth"
+	"github.com/GoAdminGroup/go-admin/modules/page"
+	template2 "github.com/GoAdminGroup/go-admin/template"
+	"github.com/GoAdminGroup/go-admin/template/types"
 	"html/template"
 )
 
 func ShowDashboard(ctx *context.Context) {
-	page.SetPageContent(ctx, func() types.Panel {
+	page.SetPageContent(ctx, auth.Auth(ctx), func(ctx interface{}) (types.Panel, error) {
 
-		components := template2.Get(Config.THEME)
+		components := template2.Get(config.Theme)
 		colComp := components.Col()
 
 		/**************************
@@ -266,21 +267,21 @@ func ShowDashboard(ctx *context.Context) {
 
 		return types.Panel{
 			Content:     template.HTML(row1) + template.HTML(row2) + template.HTML(row3) + template.HTML(row4),
-			Title:       "仪表盘",
-			Description: "仪表盘",
-		}
+			Title:       "Dashboard",
+			Description: "Dashboard",
+		}, nil
 	})
 }
 
 func ShowErrorPage(ctx *context.Context, errorMsg string) {
-	page.SetPageContent(ctx, func() types.Panel {
-		alert := template2.Get(Config.THEME).Alert().SetTitle(template.HTML(`<i class="icon fa fa-warning"></i> Error!`)).
+	page.SetPageContent(ctx, auth.Auth(ctx), func(ctx interface{}) (types.Panel, error) {
+		alert := template2.Get(config.Theme).Alert().SetTitle(template.HTML(`<i class="icon fa fa-warning"></i> Error!`)).
 			SetTheme("warning").SetContent(template.HTML(errorMsg)).GetContent()
 
 		return types.Panel{
 			Content:     alert,
 			Description: "Error",
 			Title:       "Error",
-		}
+		}, nil
 	})
 }

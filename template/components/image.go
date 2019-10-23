@@ -1,20 +1,20 @@
 package components
 
 import (
-	"github.com/chenhg5/go-admin/template/types"
+	"github.com/GoAdminGroup/go-admin/template/types"
 	"html/template"
 )
 
 type ImgAttribute struct {
 	Name   string
-	Witdh  string
+	Width  string
 	Height string
 	Src    string
 	types.Attribute
 }
 
 func (compo *ImgAttribute) SetWidth(value string) types.ImgAttribute {
-	compo.Witdh = value
+	compo.Width = value
 	return compo
 }
 

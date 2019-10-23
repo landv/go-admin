@@ -1,16 +1,12 @@
-// Copyright 2018 cg33.  All rights reserved.
-// Use of this source code is governed by a MIT style
+// Copyright 2019 GoAdmin Core Team.  All rights reserved.
+// Use of this source code is governed by a Apache-2.0 style
 // license that can be found in the LICENSE file.
 
 package db
 
 import (
 	"database/sql"
-	"github.com/chenhg5/go-admin/modules/config"
-	"github.com/chenhg5/go-admin/modules/db/mssql"
-	"github.com/chenhg5/go-admin/modules/db/mysql"
-	"github.com/chenhg5/go-admin/modules/db/postgresql"
-	"github.com/chenhg5/go-admin/modules/db/sqlite"
+	"github.com/GoAdminGroup/go-admin/modules/config"
 )
 
 const (
@@ -21,35 +17,38 @@ const (
 )
 
 type Connection interface {
-	Query(query string, args ...interface{}) ([]map[string]interface{}, *sql.Rows)
-	Exec(query string, args ...interface{}) sql.Result
+	Query(query string, args ...interface{}) ([]map[string]interface{}, error)
+	Exec(query string, args ...interface{}) (sql.Result, error)
+	QueryWithConnection(conn, query string, args ...interface{}) ([]map[string]interface{}, error)
+	ExecWithConnection(conn, query string, args ...interface{}) (sql.Result, error)
 	InitDB(cfg map[string]config.Database)
 	GetName() string
+	GetDelimiter() string
 }
 
 func GetConnectionByDriver(driver string) Connection {
 	switch driver {
 	case "mysql":
-		return mysql.GetMysqlDB()
+		return GetMysqlDB()
 	case "mssql":
-		return mssql.GetMssqlDB()
+		return GetMssqlDB()
 	case "sqlite":
-		return sqlite.GetSqliteDB()
+		return GetSqliteDB()
 	case "postgresql":
-		return postgresql.GetPostgresqlDB()
+		return GetPostgresqlDB()
 	default:
 		panic("driver not found!")
 	}
 }
 
 func GetConnection() Connection {
-	return GetConnectionByDriver(config.Get().DATABASE[0].DRIVER)
+	return GetConnectionByDriver(config.Get().Databases.GetDefault().Driver)
 }
 
-func Query(query string, args ...interface{}) ([]map[string]interface{}, *sql.Rows) {
+func Query(query string, args ...interface{}) ([]map[string]interface{}, error) {
 	return GetConnection().Query(query, args...)
 }
 
-func Exec(query string, args ...interface{}) sql.Result {
+func Exec(query string, args ...interface{}) (sql.Result, error) {
 	return GetConnection().Exec(query, args...)
 }

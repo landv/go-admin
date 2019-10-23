@@ -1,134 +1,32 @@
 package datamodel
 
 import (
-	"github.com/chenhg5/go-admin/plugins/admin/models"
-	"github.com/chenhg5/go-admin/template/types"
-	"github.com/chenhg5/go-admin/template/types/form"
+	"github.com/GoAdminGroup/go-admin/modules/db"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
+	"github.com/GoAdminGroup/go-admin/template/types/form"
 )
 
-func GetPostsTable() (postsTable models.Table) {
+func GetPostsTable() (postsTable table.Table) {
 
-	postsTable = models.NewDefaultTable(models.DefaultTableConfig)
+	postsTable = table.NewDefaultTable(table.DefaultConfig)
 
-	postsTable.GetInfo().FieldList = []types.Field{
-		{
-			Head:     "ID",
-			Field:    "id",
-			TypeName: "int",
-			Sortable: true,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		},
-		{
-			Head:     "Title",
-			Field:    "title",
-			TypeName: "varchar",
-			Sortable: false,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		},
-		{
-			Head:     "Description",
-			Field:    "description",
-			TypeName: "varchar",
-			Sortable: false,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		},
-		{
-			Head:     "Content",
-			Field:    "content",
-			TypeName: "varchar",
-			Sortable: false,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		},
-		{
-			Head:     "Date",
-			Field:    "date",
-			TypeName: "varchar",
-			Sortable: false,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		},
-	}
+	info := postsTable.GetInfo()
+	info.AddField("ID", "id", db.Int).FieldSortable()
+	info.AddField("Title", "title", db.Varchar)
+	info.AddField("Description", "description", db.Varchar)
+	info.AddField("Content", "content", db.Varchar)
+	info.AddField("Date", "date", db.Varchar)
 
-	postsTable.GetInfo().Table = "posts"
-	postsTable.GetInfo().Title = "Posts"
-	postsTable.GetInfo().Description = "Posts"
+	info.SetTable("posts").SetTitle("Posts").SetDescription("Posts")
 
-	postsTable.GetForm().FormList = []types.Form{
-		{
-			Head:     "ID",
-			Field:    "id",
-			TypeName: "int",
-			Default:  "",
-			Editable: false,
-			FormType: form.Default,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		}, {
-			Head:     "Title",
-			Field:    "title",
-			TypeName: "varchar",
-			Default:  "",
-			Editable: true,
-			FormType: form.Text,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		}, {
-			Head:     "Name",
-			Field:    "name",
-			TypeName: "varchar",
-			Default:  "",
-			Editable: true,
-			FormType: form.Text,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		}, {
-			Head:     "Description",
-			Field:    "description",
-			TypeName: "varchar",
-			Default:  "",
-			Editable: true,
-			FormType: form.Text,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		}, {
-			Head:     "Content",
-			Field:    "content",
-			TypeName: "varchar",
-			Default:  "",
-			Editable: true,
-			FormType: form.RichText,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		}, {
-			Head:     "Date",
-			Field:    "date",
-			TypeName: "varchar",
-			Default:  "",
-			Editable: true,
-			FormType: form.Text,
-			ExcuFun: func(model types.RowModel) interface{} {
-				return model.Value
-			},
-		},
-	}
+	formList := postsTable.GetForm()
+	formList.AddField("ID", "id", db.Int, form.Default).FieldNotAllowEdit()
+	formList.AddField("Title", "title", db.Varchar, form.Text)
+	formList.AddField("Description", "description", db.Varchar, form.Text)
+	formList.AddField("Content", "content", db.Varchar, form.Text)
+	formList.AddField("Date", "date", db.Varchar, form.Datetime)
 
-	postsTable.GetForm().Table = "posts"
-	postsTable.GetForm().Title = "Posts"
-	postsTable.GetForm().Description = "Posts"
+	formList.SetTable("posts").SetTitle("Posts").SetDescription("Posts")
 
 	return
 }

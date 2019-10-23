@@ -1,5 +1,5 @@
-// Copyright 2018 cg33.  All rights reserved.
-// Use of this source code is governed by a MIT style
+// Copyright 2019 GoAdmin Core Team.  All rights reserved.
+// Use of this source code is governed by a Apache-2.0 style
 // license that can be found in the LICENSE file.
 
 package language
@@ -29,11 +29,13 @@ var en = map[string]string{
 	"online":          "Online",
 	"setting":         "Setting",
 	"sign out":        "Sign out",
+	"all":             "All",
 
 	"are you sure to delete": "Are you sure to delete",
 	"yes":                    "yes",
 	"cancel":                 "cancel",
 	"refresh succeeded":      "Refresh succeeded",
+	"reload succeeded":       "Reload succeeded",
 
 	"permission manage": "Permission Manage",
 	"menus manage":      "Menus Manage",
@@ -55,4 +57,5 @@ var en = map[string]string{
 	"roles":     "Roles",
 	"menu":      "Menu",
 	"dashboard": "Dashboard",
+	"home":      "Home",
 }
