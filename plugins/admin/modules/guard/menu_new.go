@@ -1,27 +1,31 @@
 package guard
 
 import (
-	"github.com/GoAdminGroup/go-admin/context"
-	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"html/template"
 	"strconv"
+
+	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/auth"
+	"github.com/GoAdminGroup/go-admin/modules/errors"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 )
 
 type MenuNewParam struct {
-	Title    string
-	Header   string
-	ParentId int64
-	Icon     string
-	Uri      string
-	Roles    []string
-	Alert    template.HTML
+	Title      string
+	Header     string
+	ParentId   int64
+	Icon       string
+	PluginName string
+	Uri        string
+	Roles      []string
+	Alert      template.HTML
 }
 
 func (e MenuNewParam) HasAlert() bool {
 	return e.Alert != template.HTML("")
 }
 
-func MenuNew(ctx *context.Context) {
+func (g *Guard) MenuNew(ctx *context.Context) {
 
 	parentId := ctx.FormValue("parent_id")
 	if parentId == "" {
@@ -30,11 +34,11 @@ func MenuNew(ctx *context.Context) {
 
 	var (
 		alert template.HTML
-		token = ctx.FormValue("_t")
+		token = ctx.FormValue(form.TokenKey)
 	)
 
-	if !auth.TokenHelper.CheckToken(token) {
-		alert = getAlert("edit fail, wrong token")
+	if !auth.GetTokenService(g.services.Get(auth.TokenServiceKey)).CheckToken(token) {
+		alert = getAlert(errors.EditFailWrongToken)
 	}
 
 	if alert == "" {
@@ -43,18 +47,19 @@ func MenuNew(ctx *context.Context) {
 
 	parentIdInt, _ := strconv.Atoi(parentId)
 
-	ctx.SetUserValue("new_menu_param", &MenuNewParam{
-		Title:    ctx.FormValue("title"),
-		Header:   ctx.FormValue("header"),
-		ParentId: int64(parentIdInt),
-		Icon:     ctx.FormValue("icon"),
-		Uri:      ctx.FormValue("uri"),
-		Roles:    ctx.Request.Form["roles[]"],
-		Alert:    alert,
+	ctx.SetUserValue(newMenuParamKey, &MenuNewParam{
+		Title:      ctx.FormValue("title"),
+		Header:     ctx.FormValue("header"),
+		PluginName: ctx.FormValue("plugin_name"),
+		ParentId:   int64(parentIdInt),
+		Icon:       ctx.FormValue("icon"),
+		Uri:        ctx.FormValue("uri"),
+		Roles:      ctx.Request.Form["roles[]"],
+		Alert:      alert,
 	})
 	ctx.Next()
 }
 
 func GetMenuNewParam(ctx *context.Context) *MenuNewParam {
-	return ctx.UserValue["new_menu_param"].(*MenuNewParam)
+	return ctx.UserValue[newMenuParamKey].(*MenuNewParam)
 }

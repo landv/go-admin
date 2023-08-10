@@ -1,7 +1,7 @@
 {
   "database": {
     "default": {
-      "host": "127.0.0.1",
+      "host": "db_mysql",
       "port": "3306",
       "user": "root",
       "pwd": "root",
@@ -17,8 +17,10 @@
     "path": "./uploads",
     "prefix": "uploads"
   },
+  "env": "local",
   "language": "en",
   "index": "/",
   "debug": true,
+  "open_admin_api": true,
   "color_scheme": "skin-black"
 }

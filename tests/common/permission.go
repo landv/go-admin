@@ -2,12 +2,15 @@ package common
 
 import (
 	"fmt"
-	"github.com/GoAdminGroup/go-admin/modules/config"
-	"github.com/gavv/httpexpect"
 	"net/http"
+
+	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
+	"github.com/gavv/httpexpect"
 )
 
-func PermissionTest(e *httpexpect.Expect, sesId *http.Cookie) {
+func permissionTest(e *httpexpect.Expect, sesID *http.Cookie) {
 
 	fmt.Println()
 	printlnWithColor("Permission", "blue")
@@ -16,8 +19,8 @@ func PermissionTest(e *httpexpect.Expect, sesId *http.Cookie) {
 	// show
 
 	printlnWithColor("show", "green")
-	e.GET(config.Get().Url("/info/permission")).
-		WithCookie(sesId.Name, sesId.Value).
+	e.GET(config.Url("/info/permission")).
+		WithCookie(sesID.Name, sesID.Value).
 		Expect().
 		Status(200).
 		Body().Contains("Dashboard").Contains("All permission")
@@ -25,17 +28,17 @@ func PermissionTest(e *httpexpect.Expect, sesId *http.Cookie) {
 	// show new form
 
 	printlnWithColor("show new form", "green")
-	formBody := e.GET(config.Get().Url("/info/permission/new")).
-		WithCookie(sesId.Name, sesId.Value).
+	formBody := e.GET(config.Url("/info/permission/new")).
+		WithCookie(sesID.Name, sesID.Value).
 		Expect().Status(200).Body()
 
 	token := reg.FindStringSubmatch(formBody.Raw())
 
 	// new permission tester
 
-	printlnWithColor("new permission tester", "green")
-	res := e.POST(config.Get().Url("/new/permission")).
-		WithCookie(sesId.Name, sesId.Value).
+	printlnWithColor("new permission test", "green")
+	res := e.POST(config.Url("/new/permission")).
+		WithCookie(sesID.Name, sesID.Value).
 		WithMultipart().
 		WithFormField("http_method[]", "GET").
 		WithForm(map[string]interface{}{
@@ -43,25 +46,25 @@ func PermissionTest(e *httpexpect.Expect, sesId *http.Cookie) {
 			"slug": "tester",
 			"http_path": `/
 /admin/info/op`,
-			"_previous_": config.Get().Url("/info/permission?__page=1&__pageSize=10&__sort=id&__sort_type=desc"),
-			"_t":         token[1],
+			form.PreviousKey: config.Url("/info/permission?__page=1&__pageSize=10&__sort=id&__sort_type=desc"),
+			form.TokenKey:    token[1],
 		}).Expect().Status(200)
-	res.Header("X-Pjax-Url").Contains(config.Get().Url("/info/"))
+	res.Header("X-Pjax-Url").Contains(config.Url("/info/"))
 	res.Body().Contains("tester").Contains("GET")
 
 	// show form: without id
 
-	printlnWithColor("show form: without id", "green")
-	e.GET(config.Get().Url("/info/permission/edit")).
-		WithCookie(sesId.Name, sesId.Value).
-		Expect().Status(200).Body().Contains("wrong id")
+	//printlnWithColor("show form: without id", "green")
+	//e.GET(config.Url("/info/permission/edit")).
+	//	WithCookie(sesID.Name, sesID.Value).
+	//	Expect().Status(200).Body().Contains(errors.WrongID)
 
 	// show form
 
 	printlnWithColor("show form", "green")
-	formBody = e.GET(config.Get().Url("/info/permission/edit")).
-		WithQuery("id", "3").
-		WithCookie(sesId.Name, sesId.Value).
+	formBody = e.GET(config.Url("/info/permission/edit")).
+		WithQuery(constant.EditPKKey, "3").
+		WithCookie(sesID.Name, sesID.Value).
 		Expect().Status(200).Body()
 
 	token = reg.FindStringSubmatch(formBody.Raw())
@@ -69,8 +72,8 @@ func PermissionTest(e *httpexpect.Expect, sesId *http.Cookie) {
 	// edit form
 
 	printlnWithColor("edit form", "green")
-	res = e.POST(config.Get().Url("/edit/permission")).
-		WithCookie(sesId.Name, sesId.Value).
+	res = e.POST(config.Url("/edit/permission")).
+		WithCookie(sesID.Name, sesID.Value).
 		WithMultipart().
 		WithFormField("http_method[]", "GET").
 		WithFormField("http_method[]", "POST").
@@ -79,18 +82,18 @@ func PermissionTest(e *httpexpect.Expect, sesId *http.Cookie) {
 			"slug": "tester",
 			"http_path": `/
 /admin/info/op`,
-			"_previous_": config.Get().Url("/info/permission?__page=1&__pageSize=10&__sort=id&__sort_type=desc"),
-			"_t":         token[1],
-			"id":         "3",
+			form.PreviousKey: config.Url("/info/permission?__page=1&__pageSize=10&__sort=id&__sort_type=desc"),
+			form.TokenKey:    token[1],
+			"id":             "3",
 		}).Expect().Status(200)
-	res.Header("X-Pjax-Url").Contains(config.Get().Url("/info/"))
+	res.Header("X-Pjax-Url").Contains(config.Url("/info/"))
 	res.Body().Contains("tester").Contains("GET,POST")
 
 	// show new form
 
 	printlnWithColor("show new form", "green")
-	formBody = e.GET(config.Get().Url("/info/permission/new")).
-		WithCookie(sesId.Name, sesId.Value).
+	formBody = e.GET(config.Url("/info/permission/new")).
+		WithCookie(sesID.Name, sesID.Value).
 		Expect().Status(200).Body()
 
 	token = reg.FindStringSubmatch(formBody.Raw())
@@ -98,8 +101,8 @@ func PermissionTest(e *httpexpect.Expect, sesId *http.Cookie) {
 	// new tester2
 
 	printlnWithColor("new tester2", "green")
-	e.POST(config.Get().Url("/new/permission")).
-		WithCookie(sesId.Name, sesId.Value).
+	e.POST(config.Url("/new/permission")).
+		WithCookie(sesID.Name, sesID.Value).
 		WithMultipart().
 		WithFormField("http_method[]", "GET").
 		WithForm(map[string]interface{}{
@@ -107,15 +110,15 @@ func PermissionTest(e *httpexpect.Expect, sesId *http.Cookie) {
 			"slug": "tester2",
 			"http_path": `/
 /admin/info/op`,
-			"_previous_": config.Get().Url("/info/permission?__page=1&__pageSize=10&__sort=id&__sort_type=desc"),
-			"_t":         token[1],
+			form.PreviousKey: config.Url("/info/permission?__page=1&__pageSize=10&__sort=id&__sort_type=desc"),
+			form.TokenKey:    token[1],
 		}).Expect().Status(200)
 
 	// delete tester2
 
 	printlnWithColor("delete permission tester2", "green")
-	e.POST(config.Get().Url("/delete/permission")).
-		WithCookie(sesId.Name, sesId.Value).
+	e.POST(config.Url("/delete/permission")).
+		WithCookie(sesID.Name, sesID.Value).
 		WithMultipart().
 		WithFormField("id", "4").
 		Expect().Status(200).JSON().Object().

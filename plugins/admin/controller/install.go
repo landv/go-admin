@@ -3,12 +3,14 @@ package controller
 import (
 	"bytes"
 	"database/sql"
+	"net/http"
+
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/response"
-	"net/http"
 )
 
-func ShowInstall(ctx *context.Context) {
+// ShowInstall show install page.
+func (h *Handler) ShowInstall(ctx *context.Context) {
 
 	buffer := new(bytes.Buffer)
 	//template.GetInstallPage(buffer)
@@ -19,10 +21,11 @@ func ShowInstall(ctx *context.Context) {
 	//rs2, _ := mysql.Query("show columns from users")
 	//fmt.Println(rs2[0]["Field"])
 
-	ctx.Html(http.StatusOK, buffer.String())
+	ctx.HTML(http.StatusOK, buffer.String())
 }
 
-func CheckDatabase(ctx *context.Context) {
+// CheckDatabase check the database connection.
+func (h *Handler) CheckDatabase(ctx *context.Context) {
 
 	ip := ctx.FormValue("h")
 	port := ctx.FormValue("po")
@@ -39,7 +42,7 @@ func CheckDatabase(ctx *context.Context) {
 	}
 
 	defer func() {
-		SqlDB.Close()
+		_ = SqlDB.Close()
 	}()
 
 	if err != nil {

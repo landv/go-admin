@@ -1,10 +1,16 @@
+// Copyright 2019 GoAdmin Core Team. All rights reserved.
+// Use of this source code is governed by a Apache-2.0 style
+// license that can be found in the LICENSE file.
+
 package db
 
 import (
 	"fmt"
+	"html/template"
 	"strconv"
 )
 
+// DatabaseType is the database field type.
 type DatabaseType string
 
 const (
@@ -18,7 +24,9 @@ const (
 	Smallint  DatabaseType = "SMALLINT"
 	Bigint    DatabaseType = "BIGINT"
 	Bit       DatabaseType = "BIT"
+	Int8      DatabaseType = "INT8"
 	Int4      DatabaseType = "INT4"
+	Int2      DatabaseType = "INT2"
 
 	Integer     DatabaseType = "INTEGER"
 	Numeric     DatabaseType = "NUMERIC"
@@ -33,6 +41,8 @@ const (
 
 	Real    DatabaseType = "REAL"
 	Float   DatabaseType = "FLOAT"
+	Float4  DatabaseType = "FLOAT4"
+	Float8  DatabaseType = "FLOAT8"
 	Double  DatabaseType = "DOUBLE"
 	Decimal DatabaseType = "DECIMAL"
 
@@ -55,7 +65,8 @@ const (
 
 	Varchar DatabaseType = "VARCHAR"
 	Char    DatabaseType = "CHAR"
-	Json    DatabaseType = "JSON"
+	Bpchar  DatabaseType = "BPCHAR"
+	JSON    DatabaseType = "JSON"
 
 	Blob       DatabaseType = "BLOB"
 	Tinyblob   DatabaseType = "TINYBLOB"
@@ -64,7 +75,7 @@ const (
 
 	Interval DatabaseType = "INTERVAL"
 	Boolean  DatabaseType = "BOOLEAN"
-	Bool     DatabaseType = "Bool"
+	Bool     DatabaseType = "BOOL"
 
 	Point   DatabaseType = "POINT"
 	Line    DatabaseType = "LINE"
@@ -99,15 +110,18 @@ const (
 	Geometrycollection DatabaseType = "GEOMETRYCOLLECTION"
 
 	Name DatabaseType = "NAME"
-	Uuid DatabaseType = "UUID"
+	UUID DatabaseType = "UUID"
 
 	Timestamptz DatabaseType = "TIMESTAMPTZ"
+	Timetz      DatabaseType = "TIMETZ"
 )
 
+// DT turn the string value into DatabaseType.
 func DT(s string) DatabaseType {
 	return DatabaseType(s)
 }
 
+// GetDTAndCheck check the DatabaseType.
 func GetDTAndCheck(s string) DatabaseType {
 	ss := DatabaseType(s)
 	if !Contains(ss, BoolTypeList) &&
@@ -115,33 +129,43 @@ func GetDTAndCheck(s string) DatabaseType {
 		!Contains(ss, FloatTypeList) &&
 		!Contains(ss, UintTypeList) &&
 		!Contains(ss, StringTypeList) {
-		panic("wrong type")
+		panic("wrong type: " + s)
 	}
 	return ss
 }
 
 var (
-	StringTypeList = []DatabaseType{Date, Time, Year, Datetime, Timestamptz, Timestamp,
+	// StringTypeList is a DatabaseType list of string.
+	StringTypeList = []DatabaseType{Date, Time, Year, Datetime, Timestamptz, Timestamp, Timetz,
 		Varchar, Char, Mediumtext, Longtext, Tinytext,
-		Text, Json, Blob, Tinyblob, Mediumblob, Longblob,
-		Interval, Point,
+		Text, JSON, Blob, Tinyblob, Mediumblob, Longblob,
+		Interval, Point, Bpchar,
 		Line, Lseg, Box, Path, Polygon, Circle, Cidr, Inet, Macaddr, Character, Varyingcharacter,
 		Nchar, Nativecharacter, Nvarchar, Clob, Binary, Varbinary, Enum, Set, Geometry, Multilinestring,
-		Multipolygon, Linestring, Multipoint, Geometrycollection, Name, Uuid, Timestamptz,
-		Name, Uuid, Inet}
+		Multipolygon, Linestring, Multipoint, Geometrycollection, Name, UUID, Timestamptz,
+		Name, UUID, Inet}
+
+	// BoolTypeList is a DatabaseType list of bool.
 	BoolTypeList = []DatabaseType{Bool, Boolean}
-	IntTypeList  = []DatabaseType{Int4,
+
+	// IntTypeList is a DatabaseType list of integer.
+	IntTypeList = []DatabaseType{Int4, Int2, Int8,
 		Int,
 		Tinyint,
 		Mediumint,
 		Smallint,
-		Numeric, Smallserial, Serial, Bigserial, Money,
+		Smallserial, Serial, Bigserial,
 		Integer,
 		Bigint}
-	FloatTypeList = []DatabaseType{Float, Double, Real, Doubleprecision}
-	UintTypeList  = []DatabaseType{Decimal, Bit}
+
+	// FloatTypeList is a DatabaseType list of float.
+	FloatTypeList = []DatabaseType{Float, Float4, Float8, Double, Real, Doubleprecision}
+
+	// UintTypeList is a DatabaseType list of uint.
+	UintTypeList = []DatabaseType{Decimal, Bit, Money, Numeric}
 )
 
+// Contains check the given DatabaseType is in the list or not.
 func Contains(v DatabaseType, a []DatabaseType) bool {
 	for _, i := range a {
 		if i == v {
@@ -151,8 +175,10 @@ func Contains(v DatabaseType, a []DatabaseType) bool {
 	return false
 }
 
+// Value is a string.
 type Value string
 
+// ToInt64 turn the string to a int64.
 func (v Value) ToInt64() int64 {
 	value, err := strconv.ParseInt(string(v), 10, 64)
 	if err != nil {
@@ -161,24 +187,47 @@ func (v Value) ToInt64() int64 {
 	return value
 }
 
+// String return the string value.
 func (v Value) String() string {
 	return string(v)
 }
 
-func GetValueFromDatabaseType(typ DatabaseType, value interface{}) Value {
+// HTML return the template.HTML value.
+func (v Value) HTML() template.HTML {
+	return template.HTML(v)
+}
+
+func GetValueFromDatabaseType(typ DatabaseType, value interface{}, json bool) Value {
+	if json {
+		return GetValueFromJSONOfDatabaseType(typ, value)
+	} else {
+		return GetValueFromSQLOfDatabaseType(typ, value)
+	}
+}
+
+// GetValueFromDatabaseType return Value of given DatabaseType and interface.
+func GetValueFromSQLOfDatabaseType(typ DatabaseType, value interface{}) Value {
 	switch {
 	case Contains(typ, StringTypeList):
 		if v, ok := value.(string); ok {
 			return Value(v)
+		}
+		if v2, ok2 := value.([]byte); ok2 {
+			return Value(string(v2))
 		}
 		return ""
 	case Contains(typ, BoolTypeList):
 		if v, ok := value.(bool); ok {
 			if v {
 				return "true"
-			} else {
+			}
+			return "false"
+		}
+		if v, ok := value.(int64); ok {
+			if v == 0 {
 				return "false"
 			}
+			return "true"
 		}
 		return "false"
 	case Contains(typ, IntTypeList):
@@ -193,7 +242,39 @@ func GetValueFromDatabaseType(typ DatabaseType, value interface{}) Value {
 		return "0"
 	case Contains(typ, UintTypeList):
 		if v, ok := value.([]uint8); ok {
-			return Value(fmt.Sprintf("%d", v))
+			return Value(string(v))
+		}
+		return "0"
+	}
+	panic("wrong type：" + string(typ))
+}
+
+// GetValueFromJSONOfDatabaseType return Value of given DatabaseType and interface from JSON string value.
+func GetValueFromJSONOfDatabaseType(typ DatabaseType, value interface{}) Value {
+	switch {
+	case Contains(typ, StringTypeList):
+		if v, ok := value.(string); ok {
+			return Value(v)
+		}
+		return ""
+	case Contains(typ, BoolTypeList):
+		if v, ok := value.(bool); ok {
+			if v {
+				return "true"
+			}
+			return "false"
+		}
+		return "false"
+	case Contains(typ, IntTypeList):
+		if v, ok := value.(float64); ok {
+			return Value(fmt.Sprintf("%d", int64(v)))
+		}
+		return Value(fmt.Sprintf("%d", value))
+	case Contains(typ, FloatTypeList):
+		return Value(fmt.Sprintf("%f", value))
+	case Contains(typ, UintTypeList):
+		if v, ok := value.([]uint8); ok {
+			return Value(string(v))
 		}
 		return "0"
 	}

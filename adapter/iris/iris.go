@@ -1,4 +1,4 @@
-// Copyright 2019 GoAdmin Core Team.  All rights reserved.
+// Copyright 2019 GoAdmin Core Team. All rights reserved.
 // Use of this source code is governed by a Apache-2.0 style
 // license that can be found in the LICENSE file.
 
@@ -7,147 +7,166 @@ package iris
 import (
 	"bytes"
 	"errors"
+	"net/http"
+	"net/url"
+	"strings"
+
+	"github.com/GoAdminGroup/go-admin/adapter"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
+	"github.com/GoAdminGroup/go-admin/template/types"
+	"github.com/kataras/iris/v12"
+
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/engine"
-	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"github.com/GoAdminGroup/go-admin/modules/config"
-	"github.com/GoAdminGroup/go-admin/modules/language"
-	"github.com/GoAdminGroup/go-admin/modules/logger"
-	"github.com/GoAdminGroup/go-admin/modules/menu"
 	"github.com/GoAdminGroup/go-admin/plugins"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
-	"github.com/GoAdminGroup/go-admin/template"
-	"github.com/GoAdminGroup/go-admin/template/types"
-	"github.com/kataras/iris"
-	template2 "html/template"
-	"net/http"
-	"strings"
 )
 
+// Iris structure value is an Iris GoAdmin adapter.
 type Iris struct {
+	adapter.BaseAdapter
+	ctx iris.Context
+	app *iris.Application
 }
 
 func init() {
 	engine.Register(new(Iris))
 }
 
-func (is *Iris) Use(router interface{}, plugin []plugins.Plugin) error {
+// User implements the method Adapter.User.
+func (is *Iris) User(ctx interface{}) (models.UserModel, bool) {
+	return is.GetUser(ctx, is)
+}
+
+// Use implements the method Adapter.Use.
+func (is *Iris) Use(app interface{}, plugs []plugins.Plugin) error {
+	return is.GetUse(app, plugs, is)
+}
+
+// Content implements the method Adapter.Content.
+func (is *Iris) Content(ctx interface{}, getPanelFn types.GetPanelFn, fn context.NodeProcessor, btns ...types.Button) {
+	is.GetContent(ctx, getPanelFn, is, btns, fn)
+}
+
+type HandlerFunc func(ctx iris.Context) (types.Panel, error)
+
+func Content(handler HandlerFunc) iris.Handler {
+	return func(ctx iris.Context) {
+		engine.Content(ctx, func(ctx interface{}) (types.Panel, error) {
+			return handler(ctx.(iris.Context))
+		})
+	}
+}
+
+// SetApp implements the method Adapter.SetApp.
+func (is *Iris) SetApp(app interface{}) error {
 	var (
 		eng *iris.Application
 		ok  bool
 	)
-	if eng, ok = router.(*iris.Application); !ok {
-		return errors.New("wrong parameter")
+	if eng, ok = app.(*iris.Application); !ok {
+		return errors.New("iris adapter SetApp: wrong parameter")
 	}
-
-	for _, plug := range plugin {
-		var plugCopy = plug
-		for _, req := range plug.GetRequest() {
-			eng.Handle(strings.ToUpper(req.Method), req.URL, func(c iris.Context) {
-				ctx := context.NewContext(c.Request())
-
-				var params = map[string]string{}
-				c.Params().Visit(func(key string, value string) {
-					params[key] = value
-				})
-
-				for key, value := range params {
-					if c.Request().URL.RawQuery == "" {
-						c.Request().URL.RawQuery += strings.Replace(key, ":", "", -1) + "=" + value
-					} else {
-						c.Request().URL.RawQuery += "&" + strings.Replace(key, ":", "", -1) + "=" + value
-					}
-				}
-
-				ctx.SetHandlers(plugCopy.GetHandler(c.Request().URL.Path, strings.ToLower(c.Request().Method))).Next()
-				for key, head := range ctx.Response.Header {
-					c.Header(key, head[0])
-				}
-				c.StatusCode(ctx.Response.StatusCode)
-				if ctx.Response.Body != nil {
-					buf := new(bytes.Buffer)
-					_, _ = buf.ReadFrom(ctx.Response.Body)
-					_, _ = c.WriteString(buf.String())
-				}
-			})
-		}
-	}
-
+	is.app = eng
 	return nil
 }
 
-func (is *Iris) Content(contextInterface interface{}, c types.GetPanel) {
+// AddHandler implements the method Adapter.AddHandler.
+func (is *Iris) AddHandler(method, path string, handlers context.Handlers) {
+	is.app.Handle(strings.ToUpper(method), path, func(c iris.Context) {
+		ctx := context.NewContext(c.Request())
 
+		var params = map[string]string{}
+		c.Params().Visit(func(key string, value string) {
+			params[key] = value
+		})
+
+		for key, value := range params {
+			if c.Request().URL.RawQuery == "" {
+				c.Request().URL.RawQuery += strings.ReplaceAll(key, ":", "") + "=" + value
+			} else {
+				c.Request().URL.RawQuery += "&" + strings.ReplaceAll(key, ":", "") + "=" + value
+			}
+		}
+
+		ctx.SetHandlers(handlers).Next()
+		for key, head := range ctx.Response.Header {
+			c.Header(key, head[0])
+		}
+		c.StatusCode(ctx.Response.StatusCode)
+		if ctx.Response.Body != nil {
+			buf := new(bytes.Buffer)
+			_, _ = buf.ReadFrom(ctx.Response.Body)
+			_, _ = c.WriteString(buf.String())
+		}
+	})
+}
+
+// Name implements the method Adapter.Name.
+func (*Iris) Name() string {
+	return "iris"
+}
+
+// SetContext implements the method Adapter.SetContext.
+func (*Iris) SetContext(contextInterface interface{}) adapter.WebFrameWork {
 	var (
 		ctx iris.Context
 		ok  bool
 	)
 	if ctx, ok = contextInterface.(iris.Context); !ok {
-		panic("wrong parameter")
+		panic("iris adapter SetContext: wrong parameter")
 	}
 
-	globalConfig := config.Get()
+	return &Iris{ctx: ctx}
+}
 
-	sesKey := ctx.GetCookie("go_admin_session")
+// Redirect implements the method Adapter.Redirect.
+func (is *Iris) Redirect() {
+	is.ctx.Redirect(config.Url(config.GetLoginUrl()), http.StatusFound)
+}
 
-	if sesKey == "" {
-		ctx.Redirect(globalConfig.Url("/login"), http.StatusFound)
-		return
-	}
+// SetContentType implements the method Adapter.SetContentType.
+func (is *Iris) SetContentType() {
+	is.ctx.Header("Content-Type", is.HTMLContentType())
+}
 
-	userId, ok := auth.Driver.Load(sesKey)["user_id"]
+// Write implements the method Adapter.Write.
+func (is *Iris) Write(body []byte) {
+	_, _ = is.ctx.Write(body)
+}
 
-	if !ok {
-		ctx.Redirect(globalConfig.Url("/login"), http.StatusFound)
-		return
-	}
+// GetCookie implements the method Adapter.GetCookie.
+func (is *Iris) GetCookie() (string, error) {
+	return is.ctx.GetCookie(is.CookieKey()), nil
+}
 
-	user, ok := auth.GetCurUserById(int64(userId.(float64)))
+// Lang implements the method Adapter.Lang.
+func (is *Iris) Lang() string {
+	return is.ctx.Request().URL.Query().Get("__ga_lang")
+}
 
-	if !ok {
-		ctx.Redirect(globalConfig.Url("/login"), http.StatusFound)
-		return
-	}
+// Path implements the method Adapter.Path.
+func (is *Iris) Path() string {
+	return is.ctx.Path()
+}
 
-	var (
-		panel types.Panel
-		err   error
-	)
+// Method implements the method Adapter.Method.
+func (is *Iris) Method() string {
+	return is.ctx.Method()
+}
 
-	if !auth.CheckPermissions(user, ctx.Path(), ctx.Method()) {
-		alert := template.Get(globalConfig.Theme).Alert().SetTitle(template2.HTML(`<i class="icon fa fa-warning"></i> ` + language.Get("error") + `!`)).
-			SetTheme("warning").SetContent(template2.HTML("no permission")).GetContent()
+// FormParam implements the method Adapter.FormParam.
+func (is *Iris) FormParam() url.Values {
+	return is.ctx.FormValues()
+}
 
-		panel = types.Panel{
-			Content:     alert,
-			Description: language.Get("error"),
-			Title:       language.Get("error"),
-		}
-	} else {
-		panel, err = c(ctx)
-		if err != nil {
-			alert := template.Get(globalConfig.Theme).
-				Alert().
-				SetTitle(template2.HTML(`<i class="icon fa fa-warning"></i> ` + language.Get("error") + `!`)).
-				SetTheme("warning").SetContent(template2.HTML(err.Error())).GetContent()
-			panel = types.Panel{
-				Content:     alert,
-				Description: language.Get("error"),
-				Title:       language.Get("error"),
-			}
-		}
-	}
+// IsPjax implements the method Adapter.IsPjax.
+func (is *Iris) IsPjax() bool {
+	return is.ctx.GetHeader(constant.PjaxHeader) == "true"
+}
 
-	tmpl, tmplName := template.Get(globalConfig.Theme).GetTemplate(ctx.GetHeader(constant.PjaxHeader) == "true")
-
-	ctx.Header("Content-Type", "text/html; charset=utf-8")
-
-	buf := new(bytes.Buffer)
-	err = tmpl.ExecuteTemplate(buf, tmplName,
-		types.NewPage(user, *(menu.GetGlobalMenu(user).SetActiveClass(globalConfig.UrlRemovePrefix(ctx.Request().URL.String()))),
-			panel, globalConfig))
-	if err != nil {
-		logger.Error("Iris Content", err)
-	}
-	_, _ = ctx.WriteString(buf.String())
+// Query implements the method Adapter.Query.
+func (is *Iris) Query() url.Values {
+	return is.ctx.Request().URL.Query()
 }

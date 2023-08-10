@@ -1,8 +1,11 @@
 package components
 
 import (
-	"github.com/GoAdminGroup/go-admin/template/types"
 	"html/template"
+
+	"github.com/GoAdminGroup/go-admin/modules/errors"
+	"github.com/GoAdminGroup/go-admin/modules/language"
+	"github.com/GoAdminGroup/go-admin/template/types"
 )
 
 type AlertAttribute struct {
@@ -28,6 +31,13 @@ func (compo *AlertAttribute) SetContent(value template.HTML) types.AlertAttribut
 	return compo
 }
 
+func (compo *AlertAttribute) Warning(msg string) template.HTML {
+	return compo.SetTitle(errors.MsgWithIcon).
+		SetTheme("warning").
+		SetContent(language.GetFromHtml(template.HTML(msg))).
+		GetContent()
+}
+
 func (compo *AlertAttribute) GetContent() template.HTML {
-	return ComposeHtml(compo.TemplateList, *compo, "alert")
+	return ComposeHtml(compo.TemplateList, compo.Separation, *compo, "alert")
 }

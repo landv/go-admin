@@ -9,35 +9,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 )
 
 func getThemeTemplate(moduleName, themeName string) {
 
-	defer func() {
-		_ = os.Remove("tmp.zip")
-	}()
-
-	url := "http://file.go-admin.cn/go_admin/template/template.zip"
-
-	req, err := http.NewRequest("GET", url, nil)
-
-	checkError(err)
-
-	res, err := http.DefaultClient.Do(req)
-
-	checkError(err)
-
-	defer func() {
-		_ = res.Body.Close()
-	}()
-
-	file, err := os.Create("tmp.zip")
-
-	checkError(err)
-
-	_, err = io.Copy(file, res.Body)
-
-	checkError(err)
+	downloadTo("http://file.go-admin.cn/go_admin/template/template.zip", "tmp.zip")
 
 	checkError(unzipDir("tmp.zip", "."))
 
@@ -52,6 +30,32 @@ func getThemeTemplate(moduleName, themeName string) {
 	fmt.Println()
 }
 
+func downloadTo(url, output string) {
+	defer func() {
+		_ = os.Remove(output)
+	}()
+
+	req, err := http.NewRequest("GET", url, nil)
+
+	checkError(err)
+
+	res, err := http.DefaultClient.Do(req)
+
+	checkError(err)
+
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	file, err := os.Create(output)
+
+	checkError(err)
+
+	_, err = io.Copy(file, res.Body)
+
+	checkError(err)
+}
+
 func unzipDir(src, dest string) error {
 	r, err := zip.OpenReader(src)
 	if err != nil {
@@ -63,7 +67,7 @@ func unzipDir(src, dest string) error {
 		}
 	}()
 
-	checkError(os.MkdirAll(dest, 0755))
+	checkError(os.MkdirAll(dest, 0750))
 
 	// Closure to address file descriptors issue with all the deferred .Close() methods
 	extractAndWriteFile := func(f *zip.File) error {
@@ -121,9 +125,8 @@ func replaceContents(fileDir, moduleName, themeName string) {
 			checkError(err)
 			content := string(buf)
 
-			newContent := strings.Replace(content, "github.com/GoAdminGroup/themes/adminlte", moduleName, -1)
-			newContent = strings.Replace(newContent, "adminlte", themeName, -1)
-			newContent = strings.Replace(newContent, "Adminlte", strings.Title(themeName), -1)
+			newContent := utils.ReplaceAll(content, "github.com/GoAdminGroup/themes/adminlte", moduleName,
+				"adminlte", themeName, "Adminlte", strings.Title(themeName))
 
 			checkError(ioutil.WriteFile(path, []byte(newContent), 0))
 		}

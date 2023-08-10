@@ -1,104 +1,171 @@
 package controller
 
 import (
+	"fmt"
+	template2 "html/template"
+	"net/http"
+
+	"github.com/GoAdminGroup/go-admin/template"
+
+	"github.com/GoAdminGroup/go-admin/modules/logger"
+
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/response"
+
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"github.com/GoAdminGroup/go-admin/modules/file"
 	"github.com/GoAdminGroup/go-admin/modules/language"
-	"github.com/GoAdminGroup/go-admin/modules/menu"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
+	form2 "github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/guard"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
-	"github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/types"
-	template2 "html/template"
-	"net/http"
 )
 
-func ShowNewForm(ctx *context.Context) {
+// ShowNewForm show a new form page.
+func (h *Handler) ShowNewForm(ctx *context.Context) {
 	param := guard.GetShowNewFormParam(ctx)
-	showNewForm(ctx, "", param.Panel, param.GetUrl(), param.GetInfoUrl())
+	h.showNewForm(ctx, "", param.Prefix, param.Param.GetRouteParamStr(), false)
 }
 
-func showNewForm(ctx *context.Context, alert template2.HTML, panel table.Table, url, infoUrl string) {
+func (h *Handler) showNewForm(ctx *context.Context, alert template2.HTML, prefix, paramStr string, isNew bool) {
 
-	user := auth.Auth(ctx)
+	var (
+		user        = auth.Auth(ctx)
+		panel       = h.table(prefix, ctx)
+		formInfo    = panel.GetNewFormInfo()
+		infoUrl     = h.routePathWithPrefix("info", prefix) + paramStr
+		newUrl      = h.routePathWithPrefix("new", prefix)
+		showNewUrl  = h.routePathWithPrefix("show_new", prefix) + paramStr
+		referer     = ctx.Referer()
+		f           = panel.GetActualNewForm()
+		isNotIframe = ctx.Query(constant.IframeKey) != "true"
+	)
 
-	table.RefreshTableList()
+	if referer != "" && !isInfoUrl(referer) && !isNewUrl(referer, ctx.Query(constant.PrefixKey)) {
+		infoUrl = referer
+	}
 
-	formList, groupFormList, groupHeaders := table.GetNewFormList(panel.GetForm().TabHeaders, panel.GetForm().TabGroups,
-		panel.GetForm().FieldList, panel.GetPrimaryKey().Name)
+	hiddenFields := map[string]string{
+		form2.TokenKey:    h.authSrv().AddToken(),
+		form2.PreviousKey: infoUrl,
+	}
 
-	tmpl, tmplName := aTemplate().GetTemplate(isPjax(ctx))
-	buf := template.Execute(tmpl, tmplName, user, types.Panel{
-		Content: alert + aForm().
-			SetPrefix(config.PrefixFixSlash()).
-			SetContent(formList).
-			SetTabContents(groupFormList).
-			SetTabHeaders(groupHeaders).
-			SetUrl(url).
-			SetPrimaryKey(panel.GetPrimaryKey().Name).
-			SetToken(auth.TokenHelper.AddToken()).
-			SetTitle("New").
-			SetInfoUrl(infoUrl).
-			SetHeader(panel.GetForm().HeaderHtml).
-			SetFooter(panel.GetForm().FooterHtml).
-			GetContent(),
-		Description: panel.GetForm().Description,
-		Title:       panel.GetForm().Title,
-	}, config, menu.GetGlobalMenu(user).SetActiveClass(config.UrlRemovePrefix(ctx.Path())))
-	ctx.Html(http.StatusOK, buf.String())
+	if ctx.Query(constant.IframeKey) != "" {
+		hiddenFields[constant.IframeKey] = ctx.Query(constant.IframeKey)
+	}
+
+	if ctx.Query(constant.IframeIDKey) != "" {
+		hiddenFields[constant.IframeIDKey] = ctx.Query(constant.IframeIDKey)
+	}
+
+	content := formContent(aForm().
+		SetPrefix(h.config.PrefixFixSlash()).
+		SetFieldsHTML(f.HTMLContent).
+		SetContent(formInfo.FieldList).
+		SetTabContents(formInfo.GroupFieldList).
+		SetTabHeaders(formInfo.GroupFieldHeaders).
+		SetUrl(newUrl).
+		SetAjax(f.AjaxSuccessJS, f.AjaxErrorJS).
+		SetInputWidth(f.InputWidth).
+		SetHeadWidth(f.HeadWidth).
+		SetLayout(f.Layout).
+		SetPrimaryKey(panel.GetPrimaryKey().Name).
+		SetHiddenFields(hiddenFields).
+		SetTitle(f.FormNewTitle).
+		SetOperationFooter(formFooter("new", f.IsHideContinueEditCheckBox, f.IsHideContinueNewCheckBox,
+			f.IsHideResetButton, f.FormNewBtnWord)).
+		SetHeader(f.HeaderHtml).
+		SetFooter(f.FooterHtml), len(formInfo.GroupFieldHeaders) > 0, !isNotIframe, f.IsHideBackButton, f.Header)
+
+	if f.Wrapper != nil {
+		content = f.Wrapper(content)
+	}
+
+	h.HTML(ctx, user, types.Panel{
+		Content:     alert + content,
+		Description: template2.HTML(f.Description),
+		Title:       modules.AorBHTML(isNotIframe, template2.HTML(f.Title), ""),
+		MiniSidebar: f.HideSideBar,
+	}, template.ExecuteOptions{Animation: alert == ""})
+
+	if isNew {
+		ctx.AddHeader(constant.PjaxUrlHeader, showNewUrl)
+	}
 }
 
-func NewForm(ctx *context.Context) {
+// NewForm insert a table row into database.
+func (h *Handler) NewForm(ctx *context.Context) {
 
 	param := guard.GetNewFormParam(ctx)
 
-	table.RefreshTableList()
+	// process uploading files, only support local storage
+	if len(param.MultiForm.File) > 0 {
+		err := file.GetFileEngine(h.config.FileUploadEngine.Name).Upload(param.MultiForm)
+		if err != nil {
+			logger.Error("get file engine error: ", err)
+			if ctx.WantJSON() {
+				response.Error(ctx, err.Error())
+			} else {
+				h.showNewForm(ctx, aAlert().Warning(err.Error()), param.Prefix, param.Param.GetRouteParamStr(), true)
+			}
+			return
+		}
+	}
 
-	if param.HasAlert() {
-		showNewForm(ctx, param.Alert, param.Panel, param.GetUrl(), param.GetInfoUrl())
+	err := param.Panel.InsertData(param.Value())
+	if err != nil {
+		logger.Error("insert data error: ", err)
+		if ctx.WantJSON() {
+			response.Error(ctx, err.Error(), map[string]interface{}{
+				"token": h.authSrv().AddToken(),
+			})
+		} else {
+			h.showNewForm(ctx, aAlert().Warning(err.Error()), param.Prefix, param.Param.GetRouteParamStr(), true)
+		}
 		return
 	}
 
-	// process uploading files, only support local storage
-	if len(param.MultiForm.File) > 0 {
-		err := file.GetFileEngine(config.FileUploadEngine.Name).Upload(param.MultiForm)
-		if err != nil {
-			alert := aAlert().SetTitle(template2.HTML(`<i class="icon fa fa-warning"></i> ` + language.Get("error") + `!`)).
-				SetTheme("warning").
-				SetContent(template2.HTML(err.Error())).
-				GetContent()
-			showForm(ctx, alert, param.Panel, param.Id, param.GetUrl(), param.GetInfoUrl())
-			return
-		}
+	f := param.Panel.GetActualNewForm()
+
+	if f.Responder != nil {
+		f.Responder(ctx)
+		return
 	}
 
-	if param.IsManage() { // manager edit
-		newManager(param.Value())
-	} else if param.IsRole() { // role edit
-		newRole(param.Value())
-	} else {
-		err := param.Panel.InsertDataFromDatabase(param.Value())
-		if err != nil {
-			alert := aAlert().SetTitle(template2.HTML(`<i class="icon fa fa-warning"></i> ` + language.Get("error") + `!`)).
-				SetTheme("warning").
-				SetContent(template2.HTML(err.Error())).
-				GetContent()
-			showForm(ctx, alert, param.Panel, param.Id, param.GetUrl(), param.GetInfoUrl())
-			return
-		}
+	if ctx.WantJSON() && !param.IsIframe {
+		response.OkWithData(ctx, map[string]interface{}{
+			"url":   param.PreviousPath,
+			"token": h.authSrv().AddToken(),
+		})
+		return
 	}
 
-	editUrl := modules.AorB(param.Panel.GetEditable(), param.GetEditUrl(), "")
-	deleteUrl := modules.AorB(param.Panel.GetDeletable(), param.GetDeleteUrl(), "")
-	exportUrl := modules.AorB(param.Panel.GetExportable(), param.GetExportUrl(), "")
-	newUrl := modules.AorB(param.Panel.GetCanAdd(), param.GetNewUrl(), "")
-	infoUrl := param.GetInfoUrl()
+	if !param.FromList {
 
-	buf := showTable(ctx, param.Panel, param.Path, param.Param, exportUrl, newUrl, deleteUrl, infoUrl, editUrl)
+		if isNewUrl(param.PreviousPath, param.Prefix) {
+			h.showNewForm(ctx, param.Alert, param.Prefix, param.Param.GetRouteParamStr(), true)
+			return
+		}
 
-	ctx.Html(http.StatusOK, buf.String())
-	ctx.AddHeader(constant.PjaxUrlHeader, param.PreviousPath)
+		ctx.HTML(http.StatusOK, fmt.Sprintf(`<script>location.href="%s"</script>`, param.PreviousPath))
+		ctx.AddHeader(constant.PjaxUrlHeader, param.PreviousPath)
+		return
+	}
+
+	if param.IsIframe {
+		ctx.HTML(http.StatusOK, fmt.Sprintf(`<script>
+		swal('%s', '', 'success');
+		setTimeout(function(){
+			$("#%s", window.parent.document).hide();
+			$('.modal-backdrop.fade.in', window.parent.document).hide();
+		}, 1000)
+</script>`, language.Get("success"), param.IframeID))
+		return
+	}
+
+	buf := h.showTable(ctx, param.Prefix, param.Param, nil)
+
+	ctx.HTML(http.StatusOK, buf.String())
+	ctx.AddHeader(constant.PjaxUrlHeader, h.routePathWithPrefix("info", param.Prefix)+param.Param.GetRouteParamStr())
 }

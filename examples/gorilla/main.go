@@ -1,18 +1,24 @@
 package main
 
 import (
-	ada "github.com/GoAdminGroup/go-admin/adapter/gorilla"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"time"
+
+	_ "github.com/GoAdminGroup/go-admin/adapter/gorilla"
+	_ "github.com/GoAdminGroup/go-admin/modules/db/drivers/mysql"
+	_ "github.com/GoAdminGroup/themes/adminlte"
+
 	"github.com/GoAdminGroup/go-admin/engine"
 	"github.com/GoAdminGroup/go-admin/examples/datamodel"
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/language"
-	"github.com/GoAdminGroup/go-admin/plugins/admin"
 	"github.com/GoAdminGroup/go-admin/plugins/example"
-	"github.com/GoAdminGroup/go-admin/template/types"
-	_ "github.com/GoAdminGroup/themes/adminlte"
+	"github.com/GoAdminGroup/go-admin/template"
+	"github.com/GoAdminGroup/go-admin/template/chartjs"
 	"github.com/gorilla/mux"
-	"log"
-	"net/http"
 )
 
 func main() {
@@ -20,16 +26,18 @@ func main() {
 	eng := engine.Default()
 
 	cfg := config.Config{
+		Env: config.EnvLocal,
 		Databases: config.DatabaseList{
 			"default": {
-				Host:       "127.0.0.1",
-				Port:       "3306",
-				User:       "root",
-				Pwd:        "root",
-				Name:       "godmin",
-				MaxIdleCon: 50,
-				MaxOpenCon: 150,
-				Driver:     config.DriverMysql,
+				Host:            "127.0.0.1",
+				Port:            "3306",
+				User:            "root",
+				Pwd:             "root",
+				Name:            "godmin",
+				MaxIdleConns:    50,
+				MaxOpenConns:    150,
+				ConnMaxLifetime: time.Hour,
+				Driver:          config.DriverMysql,
 			},
 		},
 		Store: config.Store{
@@ -46,32 +54,46 @@ func main() {
 
 	examplePlugin := example.NewExample()
 
+	template.AddComp(chartjs.NewChart())
+
 	// load from golang.Plugin
 	//
 	// examplePlugin := plugins.LoadFromPlugin("../datamodel/example.so")
 
 	// customize the login page
-	// example: https://github.com/GoAdminGroup/go-admin/blob/master/demo/main.go#L30
+	// example: https://github.com/GoAdminGroup/demo.go-admin.cn/blob/master/main.go#L39
 	//
 	// template.AddComp("login", datamodel.LoginPage)
 
 	// load config from json file
 	//
-	// eng.AddConfigFromJson("../datamodel/config.json")
+	// eng.AddConfigFromJSON("../datamodel/config.json")
 
-	if err := eng.AddConfig(cfg).AddPlugins(admin.
-		NewAdmin(datamodel.Generators).
-		AddGenerator("user", datamodel.GetUserTable), examplePlugin).
+	if err := eng.AddConfig(&cfg).
+		AddGenerators(datamodel.Generators).
+		AddDisplayFilterXssJsFilter().
+		// add generator, first parameter is the url prefix of table when visit.
+		// example:
+		//
+		// "user" => http://localhost:9033/admin/info/user
+		//
+		AddGenerator("user", datamodel.GetUserTable).
+		AddPlugins(examplePlugin).
 		Use(app); err != nil {
 		panic(err)
 	}
 
-	app.Handle("/admin", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		engine.Content(ada.Context{Request: request, Response: writer}, func(ctx interface{}) (types.Panel, error) {
-			return datamodel.GetContent()
-		})
-	})).Methods("get")
+	app.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 
-	log.Println("Listening 9033")
-	log.Fatal(http.ListenAndServe(":9033", app))
+	eng.HTML("GET", "/admin", datamodel.GetContent)
+
+	go func() {
+		_ = http.ListenAndServe(":9033", app)
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	log.Print("closing database connection")
+	eng.MysqlConnection().Close()
 }

@@ -2,6 +2,7 @@ package guard
 
 import (
 	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/errors"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
 )
 
@@ -11,24 +12,22 @@ type DeleteParam struct {
 	Prefix string
 }
 
-func Delete(ctx *context.Context) {
-
-	prefix := ctx.Query("__prefix")
-	panel := table.List[prefix]
+func (g *Guard) Delete(ctx *context.Context) {
+	panel, prefix := g.table(ctx)
 	if !panel.GetDeletable() {
-		alert(ctx, panel, "operation not allow")
+		alert(ctx, panel, errors.OperationNotAllow, g.conn, g.navBtns)
 		ctx.Abort()
 		return
 	}
 
 	id := ctx.FormValue("id")
 	if id == "" {
-		alert(ctx, panel, "wrong id")
+		alert(ctx, panel, errors.WrongID, g.conn, g.navBtns)
 		ctx.Abort()
 		return
 	}
 
-	ctx.SetUserValue("delete_param", &DeleteParam{
+	ctx.SetUserValue(deleteParamKey, &DeleteParam{
 		Panel:  panel,
 		Id:     id,
 		Prefix: prefix,
@@ -37,5 +36,5 @@ func Delete(ctx *context.Context) {
 }
 
 func GetDeleteParam(ctx *context.Context) *DeleteParam {
-	return ctx.UserValue["delete_param"].(*DeleteParam)
+	return ctx.UserValue[deleteParamKey].(*DeleteParam)
 }

@@ -1,10 +1,17 @@
 package modules
 
 import (
-	"fmt"
+	"regexp"
 	"testing"
+
+	"github.com/magiconair/properties/assert"
 )
 
-func TestUuid(t *testing.T) {
-	fmt.Println(Uuid())
+func TestInArray(t *testing.T) {
+	assert.Equal(t, isFormURL("/admin/info/profile/new"), true)
+}
+
+func isFormURL(s string) bool {
+	reg, _ := regexp.Compile("(.*?)info/(.*)/(new|edit)(.*?)")
+	return reg.MatchString(s)
 }

@@ -1,15 +1,19 @@
 package guard
 
 import (
-	"github.com/GoAdminGroup/go-admin/context"
-	"github.com/GoAdminGroup/go-admin/modules/auth"
-	"github.com/GoAdminGroup/go-admin/modules/config"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/parameter"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
 	"html/template"
 	"mime/multipart"
 	"strings"
+
+	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/auth"
+	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/modules/db"
+	"github.com/GoAdminGroup/go-admin/modules/errors"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/parameter"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
 )
 
 type ShowNewFormParam struct {
@@ -18,34 +22,45 @@ type ShowNewFormParam struct {
 	Param  parameter.Parameters
 }
 
-func (e *ShowNewFormParam) GetUrl() string {
-	return config.Get().Url("/new/" + e.Prefix)
-}
+func (g *Guard) ShowNewForm(ctx *context.Context) {
 
-func (e *ShowNewFormParam) GetInfoUrl() string {
-	return config.Get().Url("/info/" + e.Prefix + e.Param.GetRouteParamStrWithoutId())
-}
+	panel, prefix := g.table(ctx)
 
-func ShowNewForm(ctx *context.Context) {
-
-	prefix := ctx.Query("__prefix")
-	panel := table.List[prefix]
 	if !panel.GetCanAdd() {
-		alert(ctx, panel, "operation not allow")
+		alert(ctx, panel, errors.OperationNotAllow, g.conn, g.navBtns)
 		ctx.Abort()
 		return
 	}
 
-	ctx.SetUserValue("show_new_form_param", &ShowNewFormParam{
+	if panel.GetOnlyInfo() {
+		ctx.Redirect(config.Url("/info/" + prefix))
+		ctx.Abort()
+		return
+	}
+
+	if panel.GetOnlyDetail() {
+		ctx.Redirect(config.Url("/info/" + prefix + "/detail"))
+		ctx.Abort()
+		return
+	}
+
+	if panel.GetOnlyUpdateForm() {
+		ctx.Redirect(config.Url("/info/" + prefix + "/edit"))
+		ctx.Abort()
+		return
+	}
+
+	ctx.SetUserValue(showNewFormParam, &ShowNewFormParam{
 		Panel:  panel,
 		Prefix: prefix,
-		Param:  parameter.GetParam(ctx.Request.URL.Query()),
+		Param: parameter.GetParam(ctx.Request.URL, panel.GetInfo().DefaultPageSize, panel.GetInfo().SortField,
+			panel.GetInfo().GetSort()),
 	})
 	ctx.Next()
 }
 
 func GetShowNewFormParam(ctx *context.Context) *ShowNewFormParam {
-	return ctx.UserValue["show_new_form_param"].(*ShowNewFormParam)
+	return ctx.UserValue[showNewFormParam].(*ShowNewFormParam)
 }
 
 type NewFormParam struct {
@@ -53,10 +68,12 @@ type NewFormParam struct {
 	Id           string
 	Prefix       string
 	Param        parameter.Parameters
-	Previous     string
 	Path         string
 	MultiForm    *multipart.Form
 	PreviousPath string
+	FromList     bool
+	IsIframe     bool
+	IframeID     string
 	Alert        template.HTML
 }
 
@@ -64,78 +81,46 @@ func (e NewFormParam) Value() form.Values {
 	return e.MultiForm.Value
 }
 
-func (e NewFormParam) GetEditUrl() string {
-	return e.getUrl("edit")
-}
+func (g *Guard) NewForm(ctx *context.Context) {
 
-func (e NewFormParam) GetNewUrl() string {
-	return e.getUrl("new")
-}
+	var (
+		previous      = ctx.FormValue(form.PreviousKey)
+		panel, prefix = g.table(ctx)
+		conn          = db.GetConnection(g.services)
+		token         = ctx.FormValue(form.TokenKey)
+	)
 
-func (e NewFormParam) GetDeleteUrl() string {
-	return config.Get().Url("/delete/" + e.Prefix)
-}
-
-func (e NewFormParam) GetExportUrl() string {
-	return config.Get().Url("/export/" + e.Prefix + e.Param.GetRouteParamStr())
-}
-
-func (e NewFormParam) getUrl(kind string) string {
-	return config.Get().Url("/info/" + e.Prefix + "/" + kind + e.Param.GetRouteParamStr())
-}
-
-func (e NewFormParam) IsManage() bool {
-	return e.Prefix == "manager"
-}
-
-func (e *NewFormParam) GetUrl() string {
-	return config.Get().Url("/edit/" + e.Prefix)
-}
-
-func (e *NewFormParam) GetInfoUrl() string {
-	return config.Get().Url("/info/" + e.Prefix + e.Param.GetRouteParamStrWithoutId())
-}
-
-func (e NewFormParam) HasAlert() bool {
-	return e.Alert != template.HTML("")
-}
-
-func (e NewFormParam) IsRole() bool {
-	return e.Prefix == "roles"
-}
-
-func NewForm(ctx *context.Context) {
-	prefix := ctx.Query("__prefix")
-	previous := ctx.FormValue("_previous_")
-	panel := table.List[prefix]
-
-	if !panel.GetCanAdd() {
-		alert(ctx, panel, "operation not allow")
-		ctx.Abort()
-		return
-	}
-	token := ctx.FormValue("_t")
-
-	if !auth.TokenHelper.CheckToken(token) {
-		alert(ctx, panel, "edit fail, wrong token")
+	if !auth.GetTokenService(g.services.Get(auth.TokenServiceKey)).CheckToken(token) {
+		alert(ctx, panel, errors.CreateFailWrongToken, conn, g.navBtns)
 		ctx.Abort()
 		return
 	}
 
-	param := parameter.GetParamFromUrl(previous)
+	fromList := isInfoUrl(previous)
+	param := parameter.GetParamFromURL(previous, panel.GetInfo().DefaultPageSize,
+		panel.GetInfo().GetSort(), panel.GetPrimaryKey().Name)
 
-	ctx.SetUserValue("new_form_param", &NewFormParam{
+	if fromList {
+		previous = config.Url("/info/" + prefix + param.GetRouteParamStr())
+	}
+
+	values := ctx.Request.MultipartForm.Value
+
+	ctx.SetUserValue(newFormParamKey, &NewFormParam{
 		Panel:        panel,
 		Id:           "",
 		Prefix:       prefix,
 		Param:        param,
+		IsIframe:     form.Values(values).Get(constant.IframeKey) == "true",
+		IframeID:     form.Values(values).Get(constant.IframeIDKey),
 		Path:         strings.Split(previous, "?")[0],
 		MultiForm:    ctx.Request.MultipartForm,
-		PreviousPath: config.Get().Url("/info/" + prefix + param.GetRouteParamStrWithoutId()),
+		PreviousPath: previous,
+		FromList:     fromList,
 	})
 	ctx.Next()
 }
 
 func GetNewFormParam(ctx *context.Context) *NewFormParam {
-	return ctx.UserValue["new_form_param"].(*NewFormParam)
+	return ctx.UserValue[newFormParamKey].(*NewFormParam)
 }

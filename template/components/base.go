@@ -1,9 +1,12 @@
 package components
 
 import (
+	"html/template"
+
+	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/menu"
 	"github.com/GoAdminGroup/go-admin/template/types"
-	"html/template"
+	"github.com/GoAdminGroup/go-admin/template/types/form"
 )
 
 type Base struct {
@@ -33,13 +36,17 @@ func (b Base) Col() types.ColAttribute {
 
 func (b Base) Form() types.FormAttribute {
 	return &FormAttribute{
-		Name:      "form",
-		Content:   []types.FormField{},
-		Url:       "/",
-		Method:    "post",
-		InfoUrl:   "",
-		Title:     "edit",
-		Attribute: b.Attribute,
+		Name:         "form",
+		Content:      []types.FormField{},
+		Url:          "/",
+		Method:       "post",
+		HiddenFields: make(map[string]string),
+		Layout:       form.LayoutDefault,
+		Title:        "edit",
+		Attribute:    b.Attribute,
+		CdnUrl:       config.GetAssetUrl(),
+		HeadWidth:    2,
+		InputWidth:   8,
 	}
 }
 
@@ -49,84 +56,6 @@ func (b Base) Image() types.ImgAttribute {
 		Width:     "50",
 		Height:    "50",
 		Src:       "",
-		Attribute: b.Attribute,
-	}
-}
-
-func (b Base) SmallBox() types.SmallBoxAttribute {
-	return &SmallBoxAttribute{
-		Name:      "smallbox",
-		Title:     "title",
-		Value:     "value",
-		Url:       "/",
-		Color:     "aqua",
-		Attribute: b.Attribute,
-	}
-}
-
-func (b Base) InfoBox() types.InfoBoxAttribute {
-	return &InfoBoxAttribute{
-		Name:      "infobox",
-		Text:      "title",
-		Icon:      "ion-ios-cart-outline",
-		Number:    "90",
-		Color:     "red",
-		Attribute: b.Attribute,
-	}
-}
-
-func (b Base) AreaChart() types.AreaChartAttribute {
-	return &AreaChartAttribute{
-		Name:      "area-chart",
-		Attribute: b.Attribute,
-	}
-}
-
-func (b Base) ProgressGroup() types.ProgressGroupAttribute {
-	return &ProgressGroupAttribute{
-		Name:      "progress-group",
-		Attribute: b.Attribute,
-	}
-}
-
-func (b Base) Description() types.DescriptionAttribute {
-	return &DescriptionAttribute{
-		Name:      "description",
-		Attribute: b.Attribute,
-	}
-}
-
-func (b Base) PieChart() types.PieChartAttribute {
-	return &PieChartAttribute{
-		Name:      "pie-chart",
-		Attribute: b.Attribute,
-	}
-}
-
-func (b Base) LineChart() types.LineChartAttribute {
-	return &LineChartAttribute{
-		Name:      "line-chart",
-		Attribute: b.Attribute,
-	}
-}
-
-func (b Base) BarChart() types.BarChartAttribute {
-	return &BarChartAttribute{
-		Name:      "bar-chart",
-		Attribute: b.Attribute,
-	}
-}
-
-func (b Base) ChartLegend() types.ChartLegendAttribute {
-	return &ChartLegendAttribute{
-		Name:      "chart-legend",
-		Attribute: b.Attribute,
-	}
-}
-
-func (b Base) ProductList() types.ProductListAttribute {
-	return &ProductListAttribute{
-		Name:      "productlist",
 		Attribute: b.Attribute,
 	}
 }
@@ -148,7 +77,15 @@ func (b Base) Alert() types.AlertAttribute {
 func (b Base) Label() types.LabelAttribute {
 	return &LabelAttribute{
 		Name:      "label",
-		Color:     "success",
+		Type:      "",
+		Content:   "",
+		Attribute: b.Attribute,
+	}
+}
+
+func (b Base) Link() types.LinkAttribute {
+	return &LinkAttribute{
+		Name:      "link",
 		Content:   "",
 		Attribute: b.Attribute,
 	}
@@ -176,29 +113,46 @@ func (b Base) Row() types.RowAttribute {
 	}
 }
 
+func (b Base) Button() types.ButtonAttribute {
+	return &ButtonAttribute{
+		Name:      "button",
+		Attribute: b.Attribute,
+	}
+}
+
 func (b Base) Table() types.TableAttribute {
 	return &TableAttribute{
 		Name:      "table",
-		Thead:     []map[string]string{},
-		InfoList:  []map[string]template.HTML{},
-		Type:      "normal",
+		Thead:     make(types.Thead, 0),
+		InfoList:  make([]map[string]types.InfoItem, 0),
+		Type:      "table",
+		Style:     "hover",
+		Layout:    "auto",
 		Attribute: b.Attribute,
 	}
 }
 
 func (b Base) DataTable() types.DataTableAttribute {
 	return &DataTableAttribute{
-		TableAttribute: *(b.Table().SetType("data-table").(*TableAttribute)),
-		EditUrl:        "",
-		NewUrl:         "",
-		Attribute:      b.Attribute,
+		TableAttribute: *(b.Table().
+			SetStyle("hover").
+			SetName("data-table").
+			SetType("data-table").(*TableAttribute)),
+		Attribute: b.Attribute,
 	}
 }
 
 func (b Base) Tree() types.TreeAttribute {
 	return &TreeAttribute{
 		Name:      "tree",
-		Tree:      []menu.Item{},
+		Tree:      make([]menu.Item, 0),
+		Attribute: b.Attribute,
+	}
+}
+
+func (b Base) TreeView() types.TreeViewAttribute {
+	return &TreeViewAttribute{
+		Name:      "treeview",
 		Attribute: b.Attribute,
 	}
 }

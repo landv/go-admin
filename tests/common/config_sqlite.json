@@ -2,7 +2,7 @@
   "database": {
     "default": {
       "driver": "sqlite",
-      "file": "./../common/admin.db"
+      "file": "./../../common/admin.db"
     }
   },
   "domain": "localhost",
@@ -11,9 +11,10 @@
     "path": "./uploads",
     "prefix": "uploads"
   },
+  "env": "local",
   "language": "en",
   "index": "/",
   "debug": true,
-  "color_scheme": "skin-black",
-  "sql_log": true
+  "open_admin_api": true,
+  "color_scheme": "skin-black"
 }

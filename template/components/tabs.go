@@ -1,8 +1,9 @@
 package components
 
 import (
-	"github.com/GoAdminGroup/go-admin/template/types"
 	"html/template"
+
+	"github.com/GoAdminGroup/go-admin/template/types"
 )
 
 type TabsAttribute struct {
@@ -17,5 +18,5 @@ func (compo *TabsAttribute) SetData(value []map[string]template.HTML) types.Tabs
 }
 
 func (compo *TabsAttribute) GetContent() template.HTML {
-	return ComposeHtml(compo.TemplateList, *compo, "tabs")
+	return ComposeHtml(compo.TemplateList, compo.Separation, *compo, "tabs")
 }

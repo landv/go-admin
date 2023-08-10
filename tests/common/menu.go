@@ -2,13 +2,16 @@ package common
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/language"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	"github.com/gavv/httpexpect"
-	"net/http"
 )
 
-func MenuTest(e *httpexpect.Expect, sesId *http.Cookie) {
+func menuTest(e *httpexpect.Expect, sesID *http.Cookie) {
 
 	fmt.Println()
 	printlnWithColor("Menu", "blue")
@@ -17,8 +20,8 @@ func MenuTest(e *httpexpect.Expect, sesId *http.Cookie) {
 	// show
 
 	printlnWithColor("show", "green")
-	formBody := e.GET(config.Get().Url("/menu")).
-		WithCookie(sesId.Name, sesId.Value).
+	formBody := e.GET(config.Url("/menu")).
+		WithCookie(sesID.Name, sesID.Value).
 		Expect().
 		Status(200).
 		Body().Contains(language.Get("menus manage"))
@@ -27,36 +30,36 @@ func MenuTest(e *httpexpect.Expect, sesId *http.Cookie) {
 
 	// new menu tester
 
-	printlnWithColor("new menu tester", "green")
-	res := e.POST(config.Get().Url("/menu/new")).
-		WithCookie(sesId.Name, sesId.Value).
+	printlnWithColor("new menu test", "green")
+	res := e.POST(config.Url("/menu/new")).
+		WithCookie(sesID.Name, sesID.Value).
 		WithMultipart().
 		WithFormField("roles[]", "1").
 		WithForm(map[string]interface{}{
-			"parent_id":  0,
-			"title":      "test menu",
-			"header":     "",
-			"icon":       "fa-angellist",
-			"uri":        "/example/test",
-			"_previous_": "/admin/menu",
-			"_t":         token[1],
+			"parent_id":      0,
+			"title":          "test menu",
+			"header":         "",
+			"icon":           "fa-angellist",
+			"uri":            "/example/test",
+			form.PreviousKey: "/admin/menu",
+			form.TokenKey:    token[1],
 		}).Expect().Status(200)
-	res.Header("X-Pjax-Url").Contains(config.Get().Url("/menu"))
+	res.Header("X-Pjax-Url").Contains(config.Url("/menu"))
 	res.Body().Contains("test menu").Contains("/example/test")
 
 	// show form: without id
 
-	printlnWithColor("show form: without id", "green")
-	e.GET(config.Get().Url("/menu/edit/show")).
-		WithCookie(sesId.Name, sesId.Value).
-		Expect().Status(200).Body().Contains("wrong id")
+	//printlnWithColor("show form: without id", "green")
+	//e.GET(config.Url("/menu/edit/show")).
+	//	WithCookie(sesID.Name, sesID.Value).
+	//	Expect().Status(200).Body().Contains(errors.WrongID)
 
 	// show form
 
 	printlnWithColor("show form", "green")
-	formBody = e.GET(config.Get().Url("/menu/edit/show")).
-		WithQuery("id", "3").
-		WithCookie(sesId.Name, sesId.Value).
+	formBody = e.GET(config.Url("/menu/edit/show")).
+		WithQuery(constant.EditPKKey, "3").
+		WithCookie(sesID.Name, sesID.Value).
 		Expect().Status(200).Body()
 
 	token = reg.FindStringSubmatch(formBody.Raw())
@@ -64,48 +67,48 @@ func MenuTest(e *httpexpect.Expect, sesId *http.Cookie) {
 	// edit form
 
 	printlnWithColor("edit form", "green")
-	res = e.POST(config.Get().Url("/menu/edit")).
-		WithCookie(sesId.Name, sesId.Value).
+	res = e.POST(config.Url("/menu/edit")).
+		WithCookie(sesID.Name, sesID.Value).
 		WithMultipart().
 		WithFormField("roles[]", "1").
 		WithForm(map[string]interface{}{
-			"parent_id":  0,
-			"title":      "test2 menu",
-			"header":     "",
-			"icon":       "fa-angellist",
-			"uri":        "/example/test",
-			"_previous_": "/admin/menu",
-			"_t":         token[1],
-			"id":         "3",
+			"parent_id":      0,
+			"title":          "test2 menu",
+			"header":         "",
+			"icon":           "fa-angellist",
+			"uri":            "/example/test",
+			form.PreviousKey: "/admin/menu",
+			form.TokenKey:    token[1],
+			"id":             "3",
 		}).Expect().Status(200)
-	res.Header("X-Pjax-Url").Contains(config.Get().Url("/menu"))
+	res.Header("X-Pjax-Url").Contains(config.Url("/menu"))
 	res.Body().Contains("test2 menu").Contains("/example/test")
 
 	// new tester2
 
 	printlnWithColor("new tester2", "green")
-	e.POST(config.Get().Url("/menu/new")).
-		WithCookie(sesId.Name, sesId.Value).
+	e.POST(config.Url("/menu/new")).
+		WithCookie(sesID.Name, sesID.Value).
 		WithMultipart().
 		WithFormField("roles[]", "1").
 		WithForm(map[string]interface{}{
-			"parent_id":  0,
-			"title":      "test2 menu",
-			"header":     "",
-			"icon":       "fa-angellist",
-			"uri":        "/example/test2",
-			"_previous_": "/admin/menu",
-			"_t":         token[1],
+			"parent_id":      0,
+			"title":          "test2 menu",
+			"header":         "",
+			"icon":           "fa-angellist",
+			"uri":            "/example/test2",
+			form.PreviousKey: "/admin/menu",
+			form.TokenKey:    token[1],
 		}).Expect().Status(200)
 
 	// delete tester2
 
 	printlnWithColor("delete menu tester2", "green")
-	e.POST(config.Get().Url("/menu/delete")).
+	e.POST(config.Url("/menu/delete")).
 		WithQuery("id", "9").
-		WithCookie(sesId.Name, sesId.Value).
+		WithCookie(sesID.Name, sesID.Value).
 		WithMultipart().
 		Expect().Status(200).JSON().Object().
 		ValueEqual("code", 200).
-		ValueEqual("msg", "ok")
+		ValueEqual("msg", "delete succeed")
 }

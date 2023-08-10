@@ -1,35 +1,43 @@
 package guard
 
 import (
-	"github.com/GoAdminGroup/go-admin/context"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
 	"strings"
+
+	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/errors"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
 )
 
 type ExportParam struct {
 	Panel  table.Table
 	Id     []string
 	Prefix string
+	IsAll  bool
 }
 
-func Export(ctx *context.Context) {
-
-	prefix := ctx.Query("__prefix")
-	panel := table.List[prefix]
+func (g *Guard) Export(ctx *context.Context) {
+	panel, prefix := g.table(ctx)
 	if !panel.GetExportable() {
-		alert(ctx, panel, "operation not allow")
+		alert(ctx, panel, errors.OperationNotAllow, g.conn, g.navBtns)
 		ctx.Abort()
 		return
 	}
 
-	ctx.SetUserValue("export_param", &ExportParam{
+	idStr := make([]string, 0)
+	ids := ctx.FormValue("id")
+	if ids != "" {
+		idStr = strings.Split(ctx.FormValue("id"), ",")
+	}
+
+	ctx.SetUserValue(exportParamKey, &ExportParam{
 		Panel:  panel,
-		Id:     strings.Split(ctx.FormValue("id"), ","),
+		Id:     idStr,
 		Prefix: prefix,
+		IsAll:  ctx.FormValue("is_all") == "true",
 	})
 	ctx.Next()
 }
 
 func GetExportParam(ctx *context.Context) *ExportParam {
-	return ctx.UserValue["export_param"].(*ExportParam)
+	return ctx.UserValue[exportParamKey].(*ExportParam)
 }

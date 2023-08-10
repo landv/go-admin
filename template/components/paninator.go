@@ -1,8 +1,9 @@
 package components
 
 import (
-	"github.com/GoAdminGroup/go-admin/template/types"
 	"html/template"
+
+	"github.com/GoAdminGroup/go-admin/template/types"
 )
 
 type PaginatorAttribute struct {
@@ -15,8 +16,11 @@ type PaginatorAttribute struct {
 	Pages             []map[string]string
 	NextClass         string
 	NextUrl           string
+	PageSizeList      []string
 	Option            map[string]template.HTML
 	Url               string
+	ExtraInfo         template.HTML
+	EntriesInfo       template.HTML
 	types.Attribute
 }
 
@@ -35,6 +39,16 @@ func (compo *PaginatorAttribute) SetTotal(value string) types.PaginatorAttribute
 	return compo
 }
 
+func (compo *PaginatorAttribute) SetExtraInfo(value template.HTML) types.PaginatorAttribute {
+	compo.ExtraInfo = value
+	return compo
+}
+
+func (compo *PaginatorAttribute) SetEntriesInfo(value template.HTML) types.PaginatorAttribute {
+	compo.EntriesInfo = value
+	return compo
+}
+
 func (compo *PaginatorAttribute) SetPreviousClass(value string) types.PaginatorAttribute {
 	compo.PreviousClass = value
 	return compo
@@ -47,6 +61,11 @@ func (compo *PaginatorAttribute) SetPreviousUrl(value string) types.PaginatorAtt
 
 func (compo *PaginatorAttribute) SetPages(value []map[string]string) types.PaginatorAttribute {
 	compo.Pages = value
+	return compo
+}
+
+func (compo *PaginatorAttribute) SetPageSizeList(value []string) types.PaginatorAttribute {
+	compo.PageSizeList = value
 	return compo
 }
 
@@ -71,5 +90,5 @@ func (compo *PaginatorAttribute) SetUrl(value string) types.PaginatorAttribute {
 }
 
 func (compo *PaginatorAttribute) GetContent() template.HTML {
-	return ComposeHtml(compo.TemplateList, *compo, "paginator")
+	return ComposeHtml(compo.TemplateList, compo.Separation, *compo, "paginator")
 }

@@ -58,8 +58,10 @@ CREATE TABLE public.goadmin_menu (
     "order" integer DEFAULT 0 NOT NULL,
     title character varying(50) NOT NULL,
     header character varying(100),
+    plugin_name character varying(100) NOT NULL,
     icon character varying(50) NOT NULL,
-    uri character varying(50) NOT NULL,
+    uri character varying(3000) NOT NULL,
+    uuid character varying(100),
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now()
 );
@@ -98,6 +100,38 @@ CREATE TABLE public.goadmin_operation_log (
 
 
 ALTER TABLE public.goadmin_operation_log OWNER TO postgres;
+
+--
+-- Name: goadmin_site_myid_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.goadmin_site_myid_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    MAXVALUE 99999999
+    CACHE 1;
+
+
+ALTER TABLE public.goadmin_site_myid_seq OWNER TO postgres;
+
+--
+-- Name: goadmin_site; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.goadmin_site (
+    id integer DEFAULT nextval('public.goadmin_site_myid_seq'::regclass) NOT NULL,
+    key character varying(100) NOT NULL,
+    value text NOT NULL,
+    type integer DEFAULT 0,
+    description character varying(3000),
+    state integer DEFAULT 0,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.goadmin_site OWNER TO postgres;
 
 --
 -- Name: goadmin_permissions_myid_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -264,9 +298,9 @@ ALTER TABLE public.goadmin_users_myid_seq OWNER TO postgres;
 
 CREATE TABLE public.goadmin_users (
     id integer DEFAULT nextval('public.goadmin_users_myid_seq'::regclass) NOT NULL,
-    username character varying(190) NOT NULL,
-    password character varying(80) NOT NULL,
-    name character varying(255) NOT NULL,
+    username character varying(100) NOT NULL,
+    password character varying(100) NOT NULL,
+    name character varying(100) NOT NULL,
     avatar character varying(255),
     remember_token character varying(100),
     created_at timestamp without time zone DEFAULT now(),
@@ -280,14 +314,14 @@ ALTER TABLE public.goadmin_users OWNER TO postgres;
 -- Data for Name: goadmin_menu; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.goadmin_menu (id, parent_id, type, "order", title, header, icon, uri, created_at, updated_at) FROM stdin;
-1	0	1	2	Admin	\N	fa-tasks		2019-09-10 00:00:00	2019-09-10 00:00:00
-2	1	1	2	Users	\N	fa-users	/info/manager	2019-09-10 00:00:00	2019-09-10 00:00:00
-3	1	1	3	Roles	\N	fa-user	/info/roles	2019-09-10 00:00:00	2019-09-10 00:00:00
-4	1	1	4	Permission	\N	fa-ban	/info/permission	2019-09-10 00:00:00	2019-09-10 00:00:00
-5	1	1	5	Menu	\N	fa-bars	/menu	2019-09-10 00:00:00	2019-09-10 00:00:00
-6	1	1	6	Operation log	\N	fa-history	/info/op	2019-09-10 00:00:00	2019-09-10 00:00:00
-7	0	1	1	Dashboard	\N	fa-bar-chart	/	2019-09-10 00:00:00	2019-09-10 00:00:00
+COPY public.goadmin_menu (id, parent_id, type, "order", title, plugin_name, header, icon, uri, created_at, updated_at) FROM stdin;
+1	0	1	2	Admin		\N	fa-tasks		2019-09-10 00:00:00	2019-09-10 00:00:00
+2	1	1	2	Users		\N	fa-users	/info/manager	2019-09-10 00:00:00	2019-09-10 00:00:00
+3	1	1	3	Roles		\N	fa-user	/info/roles	2019-09-10 00:00:00	2019-09-10 00:00:00
+4	1	1	4	Permission		\N	fa-ban	/info/permission	2019-09-10 00:00:00	2019-09-10 00:00:00
+5	1	1	5	Menu		\N	fa-bars	/menu	2019-09-10 00:00:00	2019-09-10 00:00:00
+6	1	1	6	Operation log		\N	fa-history	/info/op	2019-09-10 00:00:00	2019-09-10 00:00:00
+7	0	1	1	Dashboard		\N	fa-bar-chart	/	2019-09-10 00:00:00	2019-09-10 00:00:00
 \.
 
 
@@ -296,6 +330,14 @@ COPY public.goadmin_menu (id, parent_id, type, "order", title, header, icon, uri
 --
 
 COPY public.goadmin_operation_log (id, user_id, path, method, ip, input, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: goadmin_site; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.goadmin_site (id, key, value, description, state, created_at, updated_at) FROM stdin;
 \.
 
 
@@ -422,7 +464,7 @@ SELECT pg_catalog.setval('public.goadmin_menu_myid_seq', 7, true);
 -- Name: goadmin_operation_log_myid_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.goadmin_operation_log_myid_seq', 0, true);
+SELECT pg_catalog.setval('public.goadmin_operation_log_myid_seq', 1, true);
 
 
 --
@@ -440,10 +482,17 @@ SELECT pg_catalog.setval('public.goadmin_roles_myid_seq', 2, true);
 
 
 --
+-- Name: goadmin_site_myid_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.goadmin_site_myid_seq', 1, true);
+
+
+--
 -- Name: goadmin_session_myid_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.goadmin_session_myid_seq', 0, true);
+SELECT pg_catalog.setval('public.goadmin_session_myid_seq', 1, true);
 
 
 --
@@ -483,6 +532,14 @@ ALTER TABLE ONLY public.goadmin_permissions
 
 ALTER TABLE ONLY public.goadmin_roles
     ADD CONSTRAINT goadmin_roles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: goadmin_site goadmin_site_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.goadmin_site
+    ADD CONSTRAINT goadmin_site_pkey PRIMARY KEY (id);
 
 
 --

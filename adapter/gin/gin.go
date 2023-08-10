@@ -1,4 +1,4 @@
-// Copyright 2019 GoAdmin Core Team.  All rights reserved.
+// Copyright 2019 GoAdmin Core Team. All rights reserved.
 // Use of this source code is governed by a Apache-2.0 style
 // license that can be found in the LICENSE file.
 
@@ -7,141 +7,162 @@ package gin
 import (
 	"bytes"
 	"errors"
+	"net/http"
+	"net/url"
+	"strings"
+
+	"github.com/GoAdminGroup/go-admin/adapter"
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/engine"
-	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"github.com/GoAdminGroup/go-admin/modules/config"
-	"github.com/GoAdminGroup/go-admin/modules/language"
-	"github.com/GoAdminGroup/go-admin/modules/logger"
-	"github.com/GoAdminGroup/go-admin/modules/menu"
 	"github.com/GoAdminGroup/go-admin/plugins"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
-	"github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/types"
 	"github.com/gin-gonic/gin"
-	template2 "html/template"
-	"net/http"
-	"strings"
 )
 
+// Gin structure value is a Gin GoAdmin adapter.
 type Gin struct {
+	adapter.BaseAdapter
+	ctx *gin.Context
+	app *gin.Engine
 }
 
 func init() {
 	engine.Register(new(Gin))
 }
 
-func (gins *Gin) Use(router interface{}, plugin []plugins.Plugin) error {
+// User implements the method Adapter.User.
+func (gins *Gin) User(ctx interface{}) (models.UserModel, bool) {
+	return gins.GetUser(ctx, gins)
+}
+
+// Use implements the method Adapter.Use.
+func (gins *Gin) Use(app interface{}, plugs []plugins.Plugin) error {
+	return gins.GetUse(app, plugs, gins)
+}
+
+// Content implements the method Adapter.Content.
+func (gins *Gin) Content(ctx interface{}, getPanelFn types.GetPanelFn, fn context.NodeProcessor, btns ...types.Button) {
+	gins.GetContent(ctx, getPanelFn, gins, btns, fn)
+}
+
+type HandlerFunc func(ctx *gin.Context) (types.Panel, error)
+
+func Content(handler HandlerFunc) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		engine.Content(ctx, func(ctx interface{}) (types.Panel, error) {
+			return handler(ctx.(*gin.Context))
+		})
+	}
+}
+
+// SetApp implements the method Adapter.SetApp.
+func (gins *Gin) SetApp(app interface{}) error {
 	var (
 		eng *gin.Engine
 		ok  bool
 	)
-	if eng, ok = router.(*gin.Engine); !ok {
-		return errors.New("wrong parameter")
+	if eng, ok = app.(*gin.Engine); !ok {
+		return errors.New("gin adapter SetApp: wrong parameter")
 	}
-
-	for _, plug := range plugin {
-		var plugCopy = plug
-		for _, req := range plug.GetRequest() {
-			eng.Handle(strings.ToUpper(req.Method), req.URL, func(c *gin.Context) {
-				ctx := context.NewContext(c.Request)
-
-				for _, param := range c.Params {
-					if c.Request.URL.RawQuery == "" {
-						c.Request.URL.RawQuery += strings.Replace(param.Key, ":", "", -1) + "=" + param.Value
-					} else {
-						c.Request.URL.RawQuery += "&" + strings.Replace(param.Key, ":", "", -1) + "=" + param.Value
-					}
-				}
-
-				ctx.SetHandlers(plugCopy.GetHandler(c.Request.URL.Path, strings.ToLower(c.Request.Method))).Next()
-				for key, head := range ctx.Response.Header {
-					c.Header(key, head[0])
-				}
-				if ctx.Response.Body != nil {
-					buf := new(bytes.Buffer)
-					_, _ = buf.ReadFrom(ctx.Response.Body)
-					c.String(ctx.Response.StatusCode, buf.String())
-				} else {
-					c.Status(ctx.Response.StatusCode)
-				}
-			})
-		}
-	}
-
+	gins.app = eng
 	return nil
 }
 
-func (gins *Gin) Content(contextInterface interface{}, c types.GetPanel) {
+// AddHandler implements the method Adapter.AddHandler.
+func (gins *Gin) AddHandler(method, path string, handlers context.Handlers) {
+	gins.app.Handle(strings.ToUpper(method), path, func(c *gin.Context) {
+		ctx := context.NewContext(c.Request)
 
+		for _, param := range c.Params {
+			if c.Request.URL.RawQuery == "" {
+				c.Request.URL.RawQuery += strings.ReplaceAll(param.Key, ":", "") + "=" + param.Value
+			} else {
+				c.Request.URL.RawQuery += "&" + strings.ReplaceAll(param.Key, ":", "") + "=" + param.Value
+			}
+		}
+
+		ctx.SetHandlers(handlers).Next()
+		for key, head := range ctx.Response.Header {
+			c.Header(key, head[0])
+		}
+		if ctx.Response.Body != nil {
+			buf := new(bytes.Buffer)
+			_, _ = buf.ReadFrom(ctx.Response.Body)
+			c.String(ctx.Response.StatusCode, buf.String())
+		} else {
+			c.Status(ctx.Response.StatusCode)
+		}
+	})
+}
+
+// Name implements the method Adapter.Name.
+func (*Gin) Name() string {
+	return "gin"
+}
+
+// SetContext implements the method Adapter.SetContext.
+func (*Gin) SetContext(contextInterface interface{}) adapter.WebFrameWork {
 	var (
 		ctx *gin.Context
 		ok  bool
 	)
+
 	if ctx, ok = contextInterface.(*gin.Context); !ok {
-		panic("wrong parameter")
+		panic("gin adapter SetContext: wrong parameter")
 	}
 
-	globalConfig := config.Get()
+	return &Gin{ctx: ctx}
+}
 
-	sesKey, err := ctx.Cookie("go_admin_session")
+// Redirect implements the method Adapter.Redirect.
+func (gins *Gin) Redirect() {
+	gins.ctx.Redirect(http.StatusFound, config.Url(config.GetLoginUrl()))
+	gins.ctx.Abort()
+}
 
-	if err != nil || sesKey == "" {
-		ctx.Redirect(http.StatusFound, globalConfig.Url("/login"))
-		ctx.Abort()
-		return
-	}
+// SetContentType implements the method Adapter.SetContentType.
+func (*Gin) SetContentType() {}
 
-	userId, ok := auth.Driver.Load(sesKey)["user_id"]
+// Write implements the method Adapter.Write.
+func (gins *Gin) Write(body []byte) {
+	gins.ctx.Data(http.StatusOK, gins.HTMLContentType(), body)
+}
 
-	if !ok {
-		ctx.Redirect(http.StatusFound, globalConfig.Url("/login"))
-		ctx.Abort()
-		return
-	}
+// GetCookie implements the method Adapter.GetCookie.
+func (gins *Gin) GetCookie() (string, error) {
+	return gins.ctx.Cookie(gins.CookieKey())
+}
 
-	user, ok := auth.GetCurUserById(int64(userId.(float64)))
+// Lang implements the method Adapter.Lang.
+func (gins *Gin) Lang() string {
+	return gins.ctx.Request.URL.Query().Get("__ga_lang")
+}
 
-	if !ok {
-		ctx.Redirect(http.StatusFound, globalConfig.Url("/login"))
-		ctx.Abort()
-		return
-	}
+// Path implements the method Adapter.Path.
+func (gins *Gin) Path() string {
+	return gins.ctx.Request.URL.Path
+}
 
-	var panel types.Panel
+// Method implements the method Adapter.Method.
+func (gins *Gin) Method() string {
+	return gins.ctx.Request.Method
+}
 
-	if !auth.CheckPermissions(user, ctx.Request.URL.Path, ctx.Request.Method) {
-		alert := template.Get(globalConfig.Theme).Alert().SetTitle(template2.HTML(`<i class="icon fa fa-warning"></i> ` + language.Get("error") + `!`)).
-			SetTheme("warning").SetContent(template2.HTML("no permission")).GetContent()
+// FormParam implements the method Adapter.FormParam.
+func (gins *Gin) FormParam() url.Values {
+	_ = gins.ctx.Request.ParseMultipartForm(32 << 20)
+	return gins.ctx.Request.PostForm
+}
 
-		panel = types.Panel{
-			Content:     alert,
-			Description: language.Get("error"),
-			Title:       language.Get("error"),
-		}
-	} else {
-		panel, err = c(ctx)
-		if err != nil {
-			alert := template.Get(globalConfig.Theme).
-				Alert().
-				SetTitle(template2.HTML(`<i class="icon fa fa-warning"></i> ` + language.Get("error") + `!`)).
-				SetTheme("warning").SetContent(template2.HTML(err.Error())).GetContent()
-			panel = types.Panel{
-				Content:     alert,
-				Description: language.Get("error"),
-				Title:       language.Get("error"),
-			}
-		}
-	}
+// IsPjax implements the method Adapter.IsPjax.
+func (gins *Gin) IsPjax() bool {
+	return gins.ctx.Request.Header.Get(constant.PjaxHeader) == "true"
+}
 
-	tmpl, tmplName := template.Get(globalConfig.Theme).GetTemplate(ctx.Request.Header.Get(constant.PjaxHeader) == "true")
-
-	ctx.Header("Content-Type", "text/html; charset=utf-8")
-
-	buf := new(bytes.Buffer)
-	err = tmpl.ExecuteTemplate(buf, tmplName, types.NewPage(user, *(menu.GetGlobalMenu(user).SetActiveClass(globalConfig.UrlRemovePrefix(ctx.Request.URL.String()))), panel, globalConfig))
-	if err != nil {
-		logger.Error("Gin Content", err)
-	}
-	ctx.String(http.StatusOK, buf.String())
+// Query implements the method Adapter.Query.
+func (gins *Gin) Query() url.Values {
+	return gins.ctx.Request.URL.Query()
 }

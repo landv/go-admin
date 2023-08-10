@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/GoAdminGroup/go-admin">
-    <img width="50%" alt="go-admin" src="http://file.go-admin.cn/introduction/logo.png">
+    <img width="48%" alt="go-admin" src="http://quick.go-admin.cn/official/assets/imgs/github_logo.png">
   </a>
 </p>
 
@@ -9,17 +9,21 @@
 </p>
 
 <p align="center">
-    <a href="http://www.go-admin.cn/en">Documentation</a> | 
-    <a href="./README_CN.md">中文文档</a> |
-    <a href="http://demo.en.go-admin.cn/admin">DEMO</a>
+    <a href="https://book.go-admin.cn/en">Documentation</a> | 
+	<a href="http://doc.go-admin.cn/zh/">中文文档</a> | 
+    <a href="./README_CN.md">中文介绍</a> |
+    <a href="https://demo.go-admin.com">DEMO</a> |
+    <a href="https://demo.go-admin.cn">中文DEMO</a> |
+    <a href="https://twitter.com/cg3365688034">Twitter</a> |
+    <a href="http://discuss.go-admin.com">Forum</a>
 </p>
 
 <p align="center">
-  <a href="https://travis-ci.com/GoAdminGroup/go-admin"><img alt="Go Report Card" src="https://api.travis-ci.com/GoAdminGroup/go-admin.svg?branch=master"></a>
+  <a href="http://drone.go-admin.com/GoAdminGroup/go-admin"><img alt="Build Status" src="http://drone.go-admin.com/api/badges/GoAdminGroup/go-admin/status.svg?ref=refs/heads/master"></a>
   <a href="https://goreportcard.com/report/github.com/GoAdminGroup/go-admin"><img alt="Go Report Card" src="https://camo.githubusercontent.com/59eed852617e19c272a4a4764fd09c669957fe75/68747470733a2f2f676f7265706f7274636172642e636f6d2f62616467652f6769746875622e636f6d2f6368656e6867352f676f2d61646d696e"></a>
   <a href="https://goreportcard.com/report/github.com/GoAdminGroup/go-admin"><img alt="golang" src="https://img.shields.io/badge/awesome-golang-blue.svg"></a>
   <a href="https://t.me/joinchat/NlyH6Bch2QARZkArithKvg" rel="nofollow"><img alt="telegram" src="https://img.shields.io/badge/chat%20on-telegram-blue" style="max-width:100%;"></a>
-  <a href="https://jq.qq.com/?_wv=1027&k=5L3e3kS"><img alt="qq群" src="https://img.shields.io/badge/QQ-756664859-yellow.svg"></a>
+  <a href="https://goadmin.slack.com"><img alt="slack" src="https://img.shields.io/badge/chat on-Slack-yellow.svg"></a>
   <a href="https://godoc.org/github.com/GoAdminGroup/go-admin" rel="nofollow"><img src="https://camo.githubusercontent.com/a9a286d43bdfff9fb41b88b25b35ea8edd2634fc/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f646572656b7061726b65722f64656c76653f7374617475732e737667" alt="GoDoc" data-canonical-src="https://godoc.org/github.com/derekparker/delve?status.svg" style="max-width:100%;"></a>
   <a href="https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/LICENSE" rel="nofollow"><img src="https://img.shields.io/badge/license-Apache2.0-blue.svg" alt="license" data-canonical-src="https://img.shields.io/badge/license-Apache2.0-blue.svg" style="max-width:100%;"></a>
 </p> 
@@ -30,14 +34,15 @@
 
 ## Preface
 
-GoAdmin is a toolkit help you to build a data visualization admin panel for your golang app.
+GoAdmin is a toolkit to help you build a data visualization admin panel for your golang app.
 
-demo: [http://demo.en.go-admin.cn/admin](http://demo.en.go-admin.cn/admin)
-account: admin  password: admin
+Online demo: [https://demo.go-admin.com](https://demo.go-admin.com)
 
-demo source code: https://github.com/GoAdminGroup/demo
+Quick follow up example: [https://github.com/GoAdminGroup/example](https://github.com/GoAdminGroup/example)
 
-![interface](http://file.go-admin.cn/introduction/interface_en_2.png)
+GoAdmin+vue example: [https://github.com/GoAdminGroup/goadmin-vue-example](https://github.com/GoAdminGroup/goadmin-vue-example)
+
+![interface](http://file.go-admin.cn/introduction/interface_en_3.png)
 
 ## Features
 
@@ -58,11 +63,30 @@ We need your help: [https://github.com/GoAdminGroup/docs/issues/1](https://githu
 
 Following three steps to run it.
 
+Note: now you can quickly start by doing like this.
+
+```shell
+$ go install github.com/GoAdminGroup/adm@latest
+$ mkdir new_project && cd new_project
+$ adm init
+```
+
+Or (use adm whose version higher or equal than v1.2.16)
+
+```shell
+$ mkdir new_project && cd new_project
+$ go install github.com/GoAdminGroup/adm@latest
+$ adm init web
+```
+
 ### Step 1: import sql
 
-[mysql](https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/data/admin.sql)
-[postgresql](https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/data/admin.pgsql)
-[sqlite](https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/data/admin.db)
+- [mysql](https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/data/admin.sql)
+- [mssql](https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/data/admin.mssql)
+- [postgresql](https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/data/admin.pgsql)
+- [sqlite](https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/data/admin.db)
+- [OceanBase](https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/data/admin.sql)
+
 
 ### Step 2: create main.go
 
@@ -75,10 +99,14 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/GoAdminGroup/go-admin/adapter/gin"
+	_ "github.com/GoAdminGroup/go-admin/modules/db/drivers/mysql"
 	"github.com/GoAdminGroup/go-admin/engine"
 	"github.com/GoAdminGroup/go-admin/plugins/admin"
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/themes/adminlte"
+	"github.com/GoAdminGroup/go-admin/template"
+	"github.com/GoAdminGroup/go-admin/template/chartjs"
+	"github.com/GoAdminGroup/go-admin/template/types"
 	"github.com/GoAdminGroup/go-admin/examples/datamodel"
 	"github.com/GoAdminGroup/go-admin/modules/language"
 )
@@ -96,9 +124,10 @@ func main() {
 				Port:         "3306",
 				User:         "root",
 				Pwd:          "root",
-				Name:         "godmin",
-				MaxIdleCon: 50,
-				MaxOpenCon: 150,
+				Name:         "goadmin",
+				MaxIdleConns: 50,
+				MaxOpenConns: 150,
+				ConnMaxLifetime: time.Hour,
 				Driver:       "mysql",
 			},
         	},
@@ -118,17 +147,21 @@ func main() {
 		ColorScheme: adminlte.ColorschemeSkinBlack,
 	}
 
-    	// Generators: see https://github.com/GoAdminGroup/go-admin/blob/master/examples/datamodel/tables.go 
-	adminPlugin := admin.NewAdmin(datamodel.Generators)
-	
-	// add generator, first parameter is the url prefix of table when visit.
-    	// example:
-    	//
-    	// "user" => http://localhost:9033/admin/info/user
-    	//
-    	adminPlugin.AddGenerator("user", datamodel.GetUserTable)
+	// add component chartjs
+	template.AddComp(chartjs.NewChart())
 
-	_ = eng.AddConfig(cfg).AddPlugins(adminPlugin).Use(r)
+	_ = eng.AddConfig(&cfg).
+		AddGenerators(datamodel.Generators).
+	        // add generator, first parameter is the url prefix of table when visit.
+    	        // example:
+    	        //
+    	        // "user" => http://localhost:9033/admin/info/user
+    	        //		
+		AddGenerator("user", datamodel.GetUserTable).
+		Use(r)
+	
+	// customize your pages
+	eng.HTML("GET", "/admin", datamodel.GetContent)
 
 	_ = r.Run(":9033")
 }
@@ -137,7 +170,7 @@ func main() {
 </p>
 </details>
 
-More Examples: [https://github.com/GoAdminGroup/go-admin/tree/master/examples](https://github.com/GoAdminGroup/go-admin/tree/master/examples)
+More framework examples: [https://github.com/GoAdminGroup/go-admin/tree/master/examples](https://github.com/GoAdminGroup/go-admin/tree/master/examples)
 
 ### Step 3: run
 
@@ -147,9 +180,11 @@ GO111MODULE=on go run main.go
 
 visit: [http://localhost:9033/admin](http://localhost:9033/admin)
 
+account: admin password: admin
+
 [A super simple example here](https://github.com/GoAdminGroup/example)
 
-See the [docs](http://go-admin.cn/en/docs/#/README) for more details.
+See the [docs](https://book.go-admin.cn) for more details.
 
 ## Backers
 

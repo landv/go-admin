@@ -1,4 +1,4 @@
-// Copyright 2019 GoAdmin Core Team.  All rights reserved.
+// Copyright 2019 GoAdmin Core Team. All rights reserved.
 // Use of this source code is governed by a Apache-2.0 style
 // license that can be found in the LICENSE file.
 
@@ -7,82 +7,108 @@ package fasthttp
 import (
 	"bytes"
 	"errors"
-	"github.com/GoAdminGroup/go-admin/context"
-	"github.com/GoAdminGroup/go-admin/engine"
-	"github.com/GoAdminGroup/go-admin/modules/auth"
-	"github.com/GoAdminGroup/go-admin/modules/config"
-	"github.com/GoAdminGroup/go-admin/modules/language"
-	"github.com/GoAdminGroup/go-admin/modules/logger"
-	"github.com/GoAdminGroup/go-admin/modules/menu"
-	"github.com/GoAdminGroup/go-admin/plugins"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
-	"github.com/GoAdminGroup/go-admin/template"
-	"github.com/GoAdminGroup/go-admin/template/types"
-	"github.com/buaazp/fasthttprouter"
-	"github.com/valyala/fasthttp"
-	template2 "html/template"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/GoAdminGroup/go-admin/adapter"
+	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/engine"
+	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/plugins"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
+	"github.com/GoAdminGroup/go-admin/template/types"
+	"github.com/buaazp/fasthttprouter"
+	"github.com/valyala/fasthttp"
 )
 
+// Fasthttp structure value is a Fasthttp GoAdmin adapter.
 type Fasthttp struct {
+	adapter.BaseAdapter
+	ctx *fasthttp.RequestCtx
+	app *fasthttprouter.Router
 }
 
 func init() {
 	engine.Register(new(Fasthttp))
 }
 
-func (fast *Fasthttp) Use(router interface{}, plugin []plugins.Plugin) error {
+// User implements the method Adapter.User.
+func (fast *Fasthttp) User(ctx interface{}) (models.UserModel, bool) {
+	return fast.GetUser(ctx, fast)
+}
+
+// Use implements the method Adapter.Use.
+func (fast *Fasthttp) Use(app interface{}, plugs []plugins.Plugin) error {
+	return fast.GetUse(app, plugs, fast)
+}
+
+// Content implements the method Adapter.Content.
+func (fast *Fasthttp) Content(ctx interface{}, getPanelFn types.GetPanelFn, fn context.NodeProcessor, btns ...types.Button) {
+	fast.GetContent(ctx, getPanelFn, fast, btns, fn)
+}
+
+type HandlerFunc func(ctx *fasthttp.RequestCtx) (types.Panel, error)
+
+func Content(handler HandlerFunc) fasthttp.RequestHandler {
+	return func(ctx *fasthttp.RequestCtx) {
+		engine.Content(ctx, func(ctx interface{}) (types.Panel, error) {
+			return handler(ctx.(*fasthttp.RequestCtx))
+		})
+	}
+}
+
+// SetApp implements the method Adapter.SetApp.
+func (fast *Fasthttp) SetApp(app interface{}) error {
 	var (
 		eng *fasthttprouter.Router
 		ok  bool
 	)
-	if eng, ok = router.(*fasthttprouter.Router); !ok {
-		return errors.New("wrong parameter")
+	if eng, ok = app.(*fasthttprouter.Router); !ok {
+		return errors.New("fasthttp adapter SetApp: wrong parameter")
 	}
 
-	for _, plug := range plugin {
-		var plugCopy = plug
-		for _, req := range plug.GetRequest() {
-			eng.Handle(strings.ToUpper(req.Method), req.URL, func(c *fasthttp.RequestCtx) {
-				httpreq := Convertor(c)
-				ctx := context.NewContext(httpreq)
-
-				var params = make(map[string]string)
-				c.VisitUserValues(func(i []byte, i2 interface{}) {
-					if value, ok := i2.(string); ok {
-						params[string(i)] = value
-					}
-				})
-
-				for key, value := range params {
-					if httpreq.URL.RawQuery == "" {
-						httpreq.URL.RawQuery += strings.Replace(key, ":", "", -1) + "=" + value
-					} else {
-						httpreq.URL.RawQuery += "&" + strings.Replace(key, ":", "", -1) + "=" + value
-					}
-				}
-
-				ctx.SetHandlers(plugCopy.GetHandler(string(c.Path()), strings.ToLower(string(c.Method())))).Next()
-				for key, head := range ctx.Response.Header {
-					c.Response.Header.Set(key, head[0])
-				}
-				if ctx.Response.Body != nil {
-					buf := new(bytes.Buffer)
-					_, _ = buf.ReadFrom(ctx.Response.Body)
-					_, _ = c.WriteString(buf.String())
-				}
-				c.Response.SetStatusCode(ctx.Response.StatusCode)
-			})
-		}
-	}
-
+	fast.app = eng
 	return nil
 }
 
-func Convertor(ctx *fasthttp.RequestCtx) *http.Request {
+// AddHandler implements the method Adapter.AddHandler.
+func (fast *Fasthttp) AddHandler(method, path string, handlers context.Handlers) {
+	fast.app.Handle(strings.ToUpper(method), path, func(c *fasthttp.RequestCtx) {
+		httpreq := convertCtx(c)
+		ctx := context.NewContext(httpreq)
+
+		var params = make(map[string]string)
+		c.VisitUserValues(func(i []byte, i2 interface{}) {
+			if value, ok := i2.(string); ok {
+				params[string(i)] = value
+			}
+		})
+
+		for key, value := range params {
+			if httpreq.URL.RawQuery == "" {
+				httpreq.URL.RawQuery += strings.ReplaceAll(key, ":", "") + "=" + value
+			} else {
+				httpreq.URL.RawQuery += "&" + strings.ReplaceAll(key, ":", "") + "=" + value
+			}
+		}
+
+		ctx.SetHandlers(handlers).Next()
+		for key, head := range ctx.Response.Header {
+			c.Response.Header.Set(key, head[0])
+		}
+		if ctx.Response.Body != nil {
+			buf := new(bytes.Buffer)
+			_, _ = buf.ReadFrom(ctx.Response.Body)
+			_, _ = c.WriteString(buf.String())
+		}
+		c.Response.SetStatusCode(ctx.Response.StatusCode)
+	})
+}
+
+func convertCtx(ctx *fasthttp.RequestCtx) *http.Request {
 	var r http.Request
 
 	body := ctx.PostBody()
@@ -136,78 +162,80 @@ func (r *netHTTPBody) Close() error {
 	return nil
 }
 
-func (fast *Fasthttp) Content(contextInterface interface{}, c types.GetPanel) {
+// Name implements the method Adapter.Name.
+func (*Fasthttp) Name() string {
+	return "fasthttp"
+}
 
+// SetContext implements the method Adapter.SetContext.
+func (*Fasthttp) SetContext(contextInterface interface{}) adapter.WebFrameWork {
 	var (
 		ctx *fasthttp.RequestCtx
 		ok  bool
 	)
 	if ctx, ok = contextInterface.(*fasthttp.RequestCtx); !ok {
-		panic("wrong parameter")
+		panic("fasthttp adapter SetContext: wrong parameter")
 	}
+	return &Fasthttp{ctx: ctx}
+}
 
-	globalConfig := config.Get()
+// Redirect implements the method Adapter.Redirect.
+func (fast *Fasthttp) Redirect() {
+	fast.ctx.Redirect(config.Url(config.GetLoginUrl()), http.StatusFound)
+}
 
-	sesKey := string(ctx.Request.Header.Cookie("go_admin_session"))
+// SetContentType implements the method Adapter.SetContentType.
+func (fast *Fasthttp) SetContentType() {
+	fast.ctx.Response.Header.Set("Content-Type", fast.HTMLContentType())
+}
 
-	if sesKey == "" {
-		ctx.Redirect(globalConfig.Url("/login"), http.StatusFound)
-		return
+// Write implements the method Adapter.Write.
+func (fast *Fasthttp) Write(body []byte) {
+	_, _ = fast.ctx.Write(body)
+}
+
+// GetCookie implements the method Adapter.GetCookie.
+func (fast *Fasthttp) GetCookie() (string, error) {
+	return string(fast.ctx.Request.Header.Cookie(fast.CookieKey())), nil
+}
+
+// Lang implements the method Adapter.Lang.
+func (fast *Fasthttp) Lang() string {
+	return string(fast.ctx.Request.URI().QueryArgs().Peek("__ga_lang"))
+}
+
+// Path implements the method Adapter.Path.
+func (fast *Fasthttp) Path() string {
+	return string(fast.ctx.Path())
+}
+
+// Method implements the method Adapter.Method.
+func (fast *Fasthttp) Method() string {
+	return string(fast.ctx.Method())
+}
+
+// FormParam implements the method Adapter.FormParam.
+func (fast *Fasthttp) FormParam() url.Values {
+	f, _ := fast.ctx.MultipartForm()
+	if f != nil {
+		return f.Value
 	}
+	return url.Values{}
+}
 
-	userId, ok := auth.Driver.Load(sesKey)["user_id"]
+// IsPjax implements the method Adapter.IsPjax.
+func (fast *Fasthttp) IsPjax() bool {
+	return string(fast.ctx.Request.Header.Peek(constant.PjaxHeader)) == "true"
+}
 
-	if !ok {
-		ctx.Redirect(globalConfig.Url("/login"), http.StatusFound)
-		return
-	}
+// Query implements the method Adapter.Query.
+func (fast *Fasthttp) Query() url.Values {
+	queryStr := fast.ctx.URI().QueryString()
+	queryObj, err := url.Parse(string(queryStr))
 
-	user, ok := auth.GetCurUserById(int64(userId.(float64)))
-
-	if !ok {
-		ctx.Redirect(globalConfig.Url("/login"), http.StatusFound)
-		return
-	}
-
-	var (
-		panel types.Panel
-		err   error
-	)
-
-	if !auth.CheckPermissions(user, string(ctx.Path()), string(ctx.Method())) {
-		alert := template.Get(globalConfig.Theme).Alert().SetTitle(template2.HTML(`<i class="icon fa fa-warning"></i> ` + language.Get("error") + `!`)).
-			SetTheme("warning").SetContent(template2.HTML("no permission")).GetContent()
-
-		panel = types.Panel{
-			Content:     alert,
-			Description: language.Get("error"),
-			Title:       language.Get("error"),
-		}
-	} else {
-		panel, err = c(ctx)
-		if err != nil {
-			alert := template.Get(globalConfig.Theme).
-				Alert().
-				SetTitle(template2.HTML(`<i class="icon fa fa-warning"></i> ` + language.Get("error") + `!`)).
-				SetTheme("warning").SetContent(template2.HTML(err.Error())).GetContent()
-			panel = types.Panel{
-				Content:     alert,
-				Description: language.Get("error"),
-				Title:       language.Get("error"),
-			}
-		}
-	}
-
-	tmpl, tmplName := template.Get(globalConfig.Theme).GetTemplate(string(ctx.Request.Header.Peek(constant.PjaxHeader)) == "true")
-
-	ctx.Response.Header.Set("Content-Type", "text/html; charset=utf-8")
-
-	buf := new(bytes.Buffer)
-	err = tmpl.ExecuteTemplate(buf, tmplName,
-		types.NewPage(user, *(menu.GetGlobalMenu(user).SetActiveClass(globalConfig.UrlRemovePrefix(ctx.Request.URI().String()))),
-			panel, globalConfig))
 	if err != nil {
-		logger.Error("Fasthttp Content", err)
+		return url.Values{}
 	}
-	_, _ = ctx.WriteString(buf.String())
+
+	return queryObj.Query()
 }

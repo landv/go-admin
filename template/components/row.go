@@ -1,8 +1,9 @@
 package components
 
 import (
-	"github.com/GoAdminGroup/go-admin/template/types"
 	"html/template"
+
+	"github.com/GoAdminGroup/go-admin/template/types"
 )
 
 type RowAttribute struct {
@@ -22,5 +23,5 @@ func (compo *RowAttribute) AddContent(value template.HTML) types.RowAttribute {
 }
 
 func (compo *RowAttribute) GetContent() template.HTML {
-	return ComposeHtml(compo.TemplateList, *compo, "row")
+	return ComposeHtml(compo.TemplateList, compo.Separation, *compo, "row")
 }

@@ -2,29 +2,35 @@ package main
 
 import (
 	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/auth"
 	c "github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/modules/db"
+	"github.com/GoAdminGroup/go-admin/modules/service"
 	"github.com/GoAdminGroup/go-admin/plugins"
-	e "github.com/GoAdminGroup/go-admin/plugins/example"
 )
 
 type Example struct {
-	app *context.App
+	*plugins.Base
 }
 
-var Plugin Example
-
-var config c.Config
-
-func (example Example) InitPlugin() {
-	config = c.Get()
-	Plugin.app = e.InitRouter(config.Prefix())
-	e.SetConfig(config)
+var Plugin = &Example{
+	Base: &plugins.Base{PlugName: "example"},
 }
 
-func (example Example) GetRequest() []context.Path {
-	return example.app.Requests
+func (example *Example) InitPlugin(srv service.List) {
+	example.InitBase(srv, "example")
+	Plugin.App = example.initRouter(c.Prefix(), srv)
 }
 
-func (example Example) GetHandler(url, method string) context.Handlers {
-	return plugins.GetHandler(url, method, example.app)
+func (example *Example) initRouter(prefix string, srv service.List) *context.App {
+
+	app := context.NewApp()
+	route := app.Group(prefix)
+	route.GET("/example", auth.Middleware(db.GetConnection(srv)), example.TestHandler)
+
+	return app
+}
+
+func (example *Example) TestHandler(ctx *context.Context) {
+
 }

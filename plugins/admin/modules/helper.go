@@ -1,10 +1,10 @@
 package modules
 
 import (
-	"bytes"
-	"encoding/gob"
-	"github.com/satori/go.uuid"
+	"html/template"
 	"strconv"
+
+	"github.com/google/uuid"
 )
 
 func InArray(arr []string, str string) bool {
@@ -14,6 +14,14 @@ func InArray(arr []string, str string) bool {
 		}
 	}
 	return false
+}
+
+func Delimiter(del, del2, s string) string {
+	return del + s + del2
+}
+
+func FilterField(filed, delimiter, delimiter2 string) string {
+	return delimiter + filed + delimiter2
 }
 
 func InArrayWithoutEmpty(arr []string, str string) bool {
@@ -39,7 +47,7 @@ func RemoveBlankFromArray(s []string) []string {
 }
 
 func Uuid() string {
-	return uuid.NewV4().String()
+	return uuid.New().String()
 }
 
 func SetDefault(source, def string) string {
@@ -58,23 +66,21 @@ func GetPage(page string) (pageInt int) {
 	return
 }
 
-func CopyMap(m map[string]string) map[string]string {
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	dec := gob.NewDecoder(&buf)
-	err := enc.Encode(m)
-	if err != nil {
-		panic(err)
+func AorB(condition bool, a, b string) string {
+	if condition {
+		return a
 	}
-	var cm map[string]string
-	err = dec.Decode(&cm)
-	if err != nil {
-		panic(err)
-	}
-	return cm
+	return b
 }
 
-func AorB(condition bool, a string, b string) string {
+func AorEmpty(condition bool, a string) string {
+	if condition {
+		return a
+	}
+	return ""
+}
+
+func AorBHTML(condition bool, a, b template.HTML) template.HTML {
 	if condition {
 		return a
 	}
